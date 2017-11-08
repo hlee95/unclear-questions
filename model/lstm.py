@@ -1,7 +1,6 @@
 """
 This file implements the LSTM for Part 1 of the project.
 """
-
 import torch
 from torch import nn
 from torch.autograd import Variable
@@ -55,8 +54,13 @@ class LSTM(nn.Module):
     the last one h_n.
     """
     n = all_input.size()[0]
-    h_t = Variable(torch.zeros(self.output_dim))
-    c_t = Variable(torch.zeros(self.output_dim))
+    h_t_tensor = torch.zeros(self.output_dim)
+    c_t_tensor = torch.zeros(self.output_dim)
+    if torch.cuda.is_available():
+        h_t_tensor = h_t_tensor.cuda()
+        c_t_tensor = c_t_tensor.cuda()
+    h_t = Variable(h_t_tensor)
+    c_t = Variable(c_t_tensor)
     for t in xrange(n):
       h_t, c_t = self.forward(all_input[t, :], h_t, c_t)
     return h_t

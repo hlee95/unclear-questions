@@ -48,8 +48,6 @@ if __name__ == "__main__":
   torch.manual_seed(1)
 
   for i in range(12000):
-    if i%100 == 0:
-      print i
     features = data.get_next_training_feature()
     q_i_tensor = torch.Tensor(features[0])
     p_i_tensor = torch.Tensor(features[1])
@@ -77,7 +75,9 @@ if __name__ == "__main__":
       q = Variable(q_tensor)
       h_Q.append(lstm.run_all(q))
     loss = get_loss(h_q, h_p, h_Q)
-    print loss
+    if i%100 == 0:
+      print i
+      print loss
     loss.backward()
     optimizer.step()
 
