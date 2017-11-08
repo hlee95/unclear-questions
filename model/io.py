@@ -7,6 +7,7 @@ import numpy as np
 
 CORPUS_LIMIT = 2000000
 TRAINING_EXAMPLE_LIMIT = 200000
+EMBEDDINGS_LIMIT = 1000
 
 EMBEDDING_LENGTH = 200
 
@@ -36,11 +37,15 @@ class Dataset(object):
   def load_vector_embeddings(self, filepath):
     print "Loading vector embeddings..."
     vector_file = open(filepath, "r")
+    count = 0
     for line in vector_file:
       tokens = line.split()
       word = tokens[0]
       vector = map(float, tokens[1:])
       self.word_embeddings[word] = np.array(vector)
+      count += 1
+      if count > EMBEDDINGS_LIMIT:
+        break
     vector_file.close()
 
   def load_training_examples(self, filepath):
