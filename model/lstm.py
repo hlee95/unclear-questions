@@ -55,7 +55,6 @@ class LSTM(nn.Module):
     the last one h_n.
     """
     n = all_input.size()[0]
-    print "run_all, n:", n
     h_t = Variable(torch.zeros(self.output_dim))
     c_t = Variable(torch.zeros(self.output_dim))
     for t in xrange(n):
