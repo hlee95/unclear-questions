@@ -16,9 +16,10 @@ class Dataset(object):
     self.corpus = {}
     # Map word to 200-dimensional vector.
     self.word_embeddings = {}
-    # Training examples (q_i, p_i+, [Q_i-])
+    # Array of training examples, 3-tuples (q_i, p_i+, [Q_i-]).
     self.training_examples = []
     self.next_training_idx = 0
+
   def load_corpus(self, filepath):
     print "Loading corpus..."
     corpus_file = open(filepath, "r")
@@ -41,7 +42,6 @@ class Dataset(object):
       vector = map(float, tokens[1:])
       self.word_embeddings[word] = np.array(vector)
     vector_file.close()
-    print self.word_embeddings["the"]
 
   def load_training_examples(self, filepath):
     print "Loading training examples..."
@@ -56,7 +56,6 @@ class Dataset(object):
       if count > TRAINING_EXAMPLE_LIMIT:
         break
     train_file.close()
-    print self.training_examples[0]
 
   def create_embedding_for_sentence(self, sentence):
     embedding = []
@@ -73,7 +72,7 @@ class Dataset(object):
   def get_body(self, id):
     return self.corpus[id][1]
 
-  def get_next_training_vector(self):
+  def get_next_training_feature(self):
     q_i, p_i, Q_i = self.training_examples[self.next_training_idx]
     # Return vectors, which is an array of numpy matrices, where each matrix
     # has dimensions num_words by 200.
