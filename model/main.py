@@ -12,14 +12,10 @@ HIDDEN_DIM = 128
 DELTA = 0.00001
 
 USE_CUDA = torch.cuda.is_available()
+FLOAT_DTYPE = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
-def get_loss(h_q, h_p, h_Q):
-  best_tensor = torch.FloatTensor([-sys.maxint + 1])
-  delta_tensor = torch.FloatTensor([DELTA])
-  if USE_CUDA:
-    best_tensor = best_tensor.cuda()
-    delta_tensor = delta_tensor.cuda()
-  best = Variable(best_tensor)
+def get_loss(h_q, h_p, h_Q):  
+  best = Variable(torch.FloatTensor([-sys.maxint + 1]).type(FLOAT_DTYPE))
   norm_hq = torch.norm(h_q)
   norm_hp = torch.norm(h_p)
   for p in h_Q:
@@ -31,7 +27,7 @@ def get_loss(h_q, h_p, h_Q):
   if best.data[0] > DELTA:
     return best
   else:
-    return torch.dot(h_q, h_p) - torch.dot(h_q, h_p) + Variable(delta_tensor)
+    return torch.dot(h_q, h_p) - torch.dot(h_q, h_p) + Variable(torch.FloatTensor([DELTA]).type(FLOAT_DTYPE))
 
   """
   Return the loss, given the encodings of q, p, and the encodings of
@@ -49,18 +45,12 @@ if __name__ == "__main__":
 
   for i in range(12000):
     features = data.get_next_training_feature()
-    q_i_tensor = torch.Tensor(features[0])
-    p_i_tensor = torch.Tensor(features[1])
 
-    if USE_CUDA:
-      q_i_tensor = q_i_tensor.cuda()
-      p_i_tensor = p_i_tensor.cuda()
-
-    q_i = Variable(q_i_tensor)
-    p_i = Variable(p_i_tensor)
+    q_i = Variable(torch.Tensor(features[0]).type(FLOAT_DTYPE))
+    p_i = Variable(torch.Tensor(features[1]).type(FLOAT_DTYPE))
     Q_i = features[2:]
 
-    lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM)
+    lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
     if USE_CUDA:
       lstm.cuda()
     optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
@@ -69,10 +59,7 @@ if __name__ == "__main__":
     h_p = lstm.run_all(p_i)
     h_Q = []
     for q in Q_i:
-      q_tensor = torch.Tensor(q)
-      if USE_CUDA:
-        q_tensor = q_tensor.cuda()
-      q = Variable(q_tensor)
+      q = Variable(torch.Tensor(q).type(FLOAT_DTYPE))
       h_Q.append(lstm.run_all(q))
     loss = get_loss(h_q, h_p, h_Q)
     if i%100 == 0:

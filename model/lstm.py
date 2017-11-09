@@ -21,7 +21,7 @@ class RNNLayer(nn.Module):
     return hidden
 
 class LSTM(nn.Module):
-  def __init__(self, input_dim, output_dim, activation=nn.Tanh()):
+  def __init__(self, input_dim, output_dim, activation=nn.Tanh(), use_cuda=False):
     super(LSTM, self).__init__()
     # Create the different gates that we need.
     self.input_dim = input_dim
@@ -31,6 +31,7 @@ class LSTM(nn.Module):
     self.o_gate = RNNLayer(input_dim, output_dim, nn.Sigmoid())
     self.z = RNNLayer(input_dim, output_dim, nn.Tanh())
     self.activation = activation
+    self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
   def forward(self, input, prev_h, prev_c):
     """
@@ -54,13 +55,8 @@ class LSTM(nn.Module):
     the last one h_n.
     """
     n = all_input.size()[0]
-    h_t_tensor = torch.zeros(self.output_dim)
-    c_t_tensor = torch.zeros(self.output_dim)
-    if torch.cuda.is_available():
-        h_t_tensor = h_t_tensor.cuda()
-        c_t_tensor = c_t_tensor.cuda()
-    h_t = Variable(h_t_tensor)
-    c_t = Variable(c_t_tensor)
+    h_t = Variable(torch.zeros(self.output_dim).type(self.float_dtype))
+    c_t = Variable(torch.zeros(self.output_dim).type(self.float_dtype))
     for t in xrange(n):
       h_t, c_t = self.forward(all_input[t, :], h_t, c_t)
     return h_t
