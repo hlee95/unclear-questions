@@ -3,6 +3,8 @@ This file handles the evaluation metrics we report for Part 1 of the project,
 which include MAP, MRR, P@1 and P@5.
 """
 
+import numpy as np
+
 class Eval(object):
   def __init__(self, data):
     self.data = data
@@ -29,13 +31,6 @@ class Eval(object):
     return sum_r / len(self.data)
 
   def Precision(self, precision_at):
-    sum_p = 0
-    for line in self.data:
-    	count = 0
-    	for i in range(precision_at):
-    		if i >= len(line):
-    			print 'precision_at is too high, reached end of line'
-    			break
-    		count += line[i]
-    	sum_p += float(count)/precision_at
-    return sum_p / len(self.data)
+    arr = self.data[:,:precision_at]
+    precisions = np.sum(arr, 1)/float(precision_at)
+    return np.sum(precisions)/len(self.data)
