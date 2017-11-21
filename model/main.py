@@ -22,29 +22,19 @@ def get_loss(h_q, h_p, h_Q):
   Return the loss, given the encodings of q, p, and the encodings of
   all the negative examples in Q.
   """
-  print h_q
-  print h_p
-  print h_Q
   best = Variable(torch.FloatTensor([-sys.maxint + 1]).type(FLOAT_DTYPE))
   norm_hq = torch.norm(h_q)
   norm_hp = torch.norm(h_p)
-  print norm_hq, norm_hp
   for p in h_Q:
     # compute the score
-    val = torch.dot(h_q, p)/norm_hq/torch.norm(p) - torch.dot(h_q, h_p)/norm_hq/norm_hp
+    val = torch.dot(h_q, p)/norm_hq/torch.norm(p) - torch.dot(h_q, h_p)/norm_hq/norm_hp + Variable(torch.FloatTensor([DELTA]).type(FLOAT_DTYPE))
     if val.data[0] > best.data[0]:
       best = val
-      print 'p', p.data.numpy()
-      print 'hq', h_q.data.numpy()
-      print 'hp', h_p.data.numpy()
-      print 'dot product of h_q and p', np.dot(h_q.data.numpy(), p.data.numpy())
-      print 'norm of something in h_q', torch.norm(p)
-      print 'val', val
   # check if p = p+ is the best
   if best.data[0] > DELTA:
     return best
   else:
-    return torch.dot(h_q, h_p) - torch.dot(h_q, h_p) + Variable(torch.FloatTensor([DELTA]).type(FLOAT_DTYPE))
+    return torch.dot(h_q, h_p) - torch.dot(h_q, h_p)
 
 def run_lstm(data, num_iter):
   torch.manual_seed(1)
@@ -96,9 +86,8 @@ def run_cnn(data, num_iter):
       q = Variable(torch.Tensor(np.expand_dims(q.T, 0)).type(FLOAT_DTYPE))
       h_Q.append(torch.squeeze(cnn(q), 0))
     loss = get_loss(h_q, h_p, h_Q)
-    if i%100 == 0:
-      print i
-      print loss
+    print i
+    print loss
     loss.backward()
     optimizer.step()
 
@@ -108,5 +97,5 @@ if __name__ == "__main__":
   data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
   data.load_training_examples("../data/askubuntu/train_random.txt")
 
-  run_cnn(data, 1)
+  run_cnn(data, 100)
 
