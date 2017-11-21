@@ -78,11 +78,13 @@ class Dataset(object):
     data = []
     for line in eval_file:
       query_id, similar_ids, candidate_ids, _ = line.split("\t")
+      if len(similar_ids) == 0:
+        continue
       similar = map(int, similar_ids.split())
       candidates = map(int, candidate_ids.split())
       # Find out which candidates are the similar ones.
       similar_indexes = [i for i in xrange(len(candidates)) if candidates[i] in similar]
-      assert len(similar_indexes) == len(similar)
+      assert len(similar_indexes) == len(similar) and len(similar_indexes) > 0
       data.append((int(query_id), similar_indexes, candidates))
     return data
 

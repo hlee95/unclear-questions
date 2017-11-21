@@ -100,7 +100,7 @@ def eval_cnn(data, cnn, use_dev):
   Get evaluation metrics for the CNN. Use dev set if use_dev = True, otherwise
   use test set.
   """
-  ranked_queries = []
+  ranked_scores = []
   for i in xrange(len(data.dev_data)):
     features, similar = data.get_next_eval_feature(use_dev)
     q_i = Variable(torch.Tensor(np.expand_dims(features[0].T, 0)).type(FLOAT_DTYPE))
@@ -116,8 +116,9 @@ def eval_cnn(data, cnn, use_dev):
     # Sort candidate scores in decreasing order and remember which are the
     # correct similar questions.
     ranked_index = np.array(candidate_scores).argsort()
-    ranked_queries.append(np.isin(ranked_index, similar).astype(int))
-  return np.array(ranked_queries)
+    ranked_score = np.isin(ranked_index, similar).astype(int)
+    ranked_scores.append(ranked_score)
+  return np.array(ranked_scores)
 
 
 if __name__ == "__main__":
