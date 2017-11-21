@@ -19,8 +19,11 @@ class Dataset(object):
     self.word_embeddings = {}
     # Array of training examples, 3-tuples (q_i, p_i+, [Q_i-]).
     self.training_examples = []
+    # Array of dev/test examples, which are in the form of
+    # 3-tuples (query, similar_indexes, candidate_ids).
     self.dev_data = []
     self.test_data = []
+    # Keep track of which data sample to return next.
     self.next_training_idx = 0
     self.next_dev_idx = 0
     self.next_test_idx = 0
@@ -78,6 +81,7 @@ class Dataset(object):
     data = []
     for line in eval_file:
       query_id, similar_ids, candidate_ids, _ = line.split("\t")
+      # Skip entries with no similar ids given.
       if len(similar_ids) == 0:
         continue
       similar = map(int, similar_ids.split())

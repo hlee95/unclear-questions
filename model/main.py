@@ -22,6 +22,7 @@ def get_score(q, p):
   score = score.data.numpy()[0]
   return score
 
+# TODO: consider using built in function (nn.MultiMarginLoss).
 def get_loss(h_q, h_p, h_Q):
   """
   Return the loss, given the encodings of q, p, and the encodings of

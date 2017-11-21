@@ -1,5 +1,5 @@
 """
-This file implements the LSTM for Part 1 of the project.
+This file implements the CNN for Part 1 of the project.
 """
 import torch
 from torch import nn
