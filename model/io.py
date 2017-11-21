@@ -19,7 +19,11 @@ class Dataset(object):
     self.word_embeddings = {}
     # Array of training examples, 3-tuples (q_i, p_i+, [Q_i-]).
     self.training_examples = []
+    self.dev_data = []
+    self.test_data = []
     self.next_training_idx = 0
+    self.next_dev_idx = 0
+    self.next_test_idx = 0
 
   def load_corpus(self, filepath):
     print "Loading corpus..."
@@ -62,6 +66,26 @@ class Dataset(object):
         break
     train_file.close()
 
+  def load_dev_data(self, filepath):
+    self.dev_data = self.load_eval_data(filepath)
+
+  def load_test_data(self, filepath):
+    self.test_data = self.load_eval_data(filepath)
+
+  def load_eval_data(self, filepath):
+    print "Loading eval data from " + filepath
+    eval_file = open(filepath, "r")
+    data = []
+    for line in eval_file:
+      query_id, similar_ids, candidate_ids, _ = line.split("\t")
+      similar = map(int, similar_ids.split())
+      candidates = map(int, candidate_ids.split())
+      # Find out which candidates are the similar ones.
+      similar_indexes = [i for i in xrange(len(candidates)) if candidates[i] in similar]
+      assert len(similar_indexes) == len(similar)
+      data.append((int(query_id), similar_indexes, candidates))
+    return data
+
   def create_embedding_for_sentence(self, sentence):
     embedding = []
     for word in sentence.split():
@@ -89,4 +113,15 @@ class Dataset(object):
     self.next_training_idx += 1
     return vectors
 
+  def get_next_eval_feature(self, use_dev):
+    query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
+    vectors = []
+    vectors.append(self.create_embedding_for_sentence(self.get_title(query)))
+    for q in candidates:
+      vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
+    if use_dev:
+      self.next_dev_idx += 1
+    else:
+      self.next_test_idx += 1
+    return vectors, similar
 

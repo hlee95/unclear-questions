@@ -17,7 +17,12 @@ DELTA = 0.00001
 USE_CUDA = torch.cuda.is_available()
 FLOAT_DTYPE = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
 
-def get_loss(h_q, h_p, h_Q):  
+def get_score(q, p):
+  score = torch.dot(q, p) / torch.norm(q) / torch.norm(p)
+  score = score.data.numpy()[0]
+  return score
+
+def get_loss(h_q, h_p, h_Q):
   """
   Return the loss, given the encodings of q, p, and the encodings of
   all the negative examples in Q.
@@ -46,7 +51,7 @@ def get_loss(h_q, h_p, h_Q):
   else:
     return torch.dot(h_q, h_p) - torch.dot(h_q, h_p) + Variable(torch.FloatTensor([DELTA]).type(FLOAT_DTYPE))
 
-def run_lstm(data, num_iter):
+def train_lstm(data, num_iter):
   torch.manual_seed(1)
 
   for i in range(num_iter):
@@ -74,7 +79,7 @@ def run_lstm(data, num_iter):
     loss.backward()
     optimizer.step()
 
-def run_cnn(data, num_iter):
+def train_cnn(data, cnn, num_iter):
   torch.manual_seed(1)
 
   for i in range(num_iter):
@@ -84,7 +89,6 @@ def run_cnn(data, num_iter):
     p_i = Variable(torch.Tensor(np.expand_dims(features[1].T, 0)).type(FLOAT_DTYPE))
     Q_i = features[2:]
 
-    cnn = CNN(EMBEDDING_LENGTH, HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
     if USE_CUDA:
       cnn.cuda()
     optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
@@ -102,11 +106,42 @@ def run_cnn(data, num_iter):
     loss.backward()
     optimizer.step()
 
+def eval_cnn(data, cnn, use_dev):
+  """
+  Get evaluation metrics for the CNN. Use dev set if use_dev = True, otherwise
+  use test set.
+  """
+  ranked_queries = []
+  for i in xrange(len(data.dev_data)):
+    features, similar = data.get_next_eval_feature(use_dev)
+    q_i = Variable(torch.Tensor(np.expand_dims(features[0].T, 0)).type(FLOAT_DTYPE))
+    # The candidates are everything after the first one.
+    C_i = features[1:]
+    if USE_CUDA:
+      cnn.cuda()
+    h_q = torch.squeeze(cnn(q_i), 0)
+    candidate_scores = []
+    for c in C_i:
+      c = Variable(torch.Tensor(np.expand_dims(c.T, 0)).type(FLOAT_DTYPE))
+      candidate_scores.append(get_score(h_q, torch.squeeze(cnn(c), 0)))
+    # Sort candidate scores in decreasing order and remember which are the
+    # correct similar questions.
+    ranked_index = np.array(candidate_scores).argsort()
+    ranked_queries.append(np.isin(ranked_index, similar).astype(int))
+  return np.array(ranked_queries)
+
+
 if __name__ == "__main__":
   data = Dataset()
   data.load_corpus("../data/askubuntu/text_tokenized.txt")
   data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
   data.load_training_examples("../data/askubuntu/train_random.txt")
+  data.load_dev_data("../data/askubuntu/dev.txt")
+  data.load_test_data("../data/askubuntu/test.txt")
 
-  run_cnn(data, 1)
+  cnn = CNN(EMBEDDING_LENGTH, HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
+  train_cnn(data, cnn, 1)
+  eval_cnn(data, cnn, True)
+
+
 
