@@ -42,59 +42,60 @@ def get_loss(h_q, h_p, h_Q):
   else:
     return torch.dot(h_q, h_p) - torch.dot(h_q, h_p)
 
-def train_lstm(data, num_iter):
+def train_lstm(data, lstm, num_epochs):
   torch.manual_seed(1)
 
-  for i in range(num_iter):
-    features = data.get_next_training_feature()
+  for i in range(num_epochs):
+    for j in xrange(len(data.training_examples)):
+      features, masks = data.get_next_training_feature()
 
-    q_i = Variable(torch.Tensor(features[0]).type(FLOAT_DTYPE))
-    p_i = Variable(torch.Tensor(features[1]).type(FLOAT_DTYPE))
-    Q_i = features[2:]
+      q_i = Variable(torch.Tensor(features[0]).type(FLOAT_DTYPE))
+      p_i = Variable(torch.Tensor(features[1]).type(FLOAT_DTYPE))
+      Q_i = features[2:]
 
-    lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
-    if USE_CUDA:
-      lstm.cuda()
-    optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
-    optimizer.zero_grad()
-    h_q = lstm.run_all(q_i)
-    h_p = lstm.run_all(p_i)
-    h_Q = []
-    for q in Q_i:
-      q = Variable(torch.Tensor(q).type(FLOAT_DTYPE))
-      h_Q.append(lstm.run_all(q))
-    loss = get_loss(h_q, h_p, h_Q)
-    if i%100 == 0:
-      print i
-      print loss
-    loss.backward()
-    optimizer.step()
+      optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
+      optimizer.zero_grad()
+      h_q = lstm.run_all(torch.unsqueeze(q_i, 0))
+      h_p = lstm.run_all(torch.unsqueeze(p_i, 0))
+      h_Q = []
+      for q in Q_i:
+        q = Variable(torch.Tensor(q).type(FLOAT_DTYPE))
+        h_Q.append(lstm.run_all(torch.unsqueeze(q, 0)))
+      loss = get_loss(h_q, h_p, h_Q)
+      # if i%100 == 0:
+      #   print i
+      #   print loss
+      loss.backward()
+      optimizer.step()
 
-def train_cnn(data, cnn, num_iter):
+def train_cnn(data, cnn, num_epochs):
   torch.manual_seed(1)
 
-  for i in range(num_iter):
-    features = data.get_next_training_feature()
+  for i in range(num_epochs):
+    print "Training on %d samples" % len(data.training_examples)
+    for j in xrange(len(data.training_examples)):
+      features = data.get_next_training_feature()
 
-    q_i = Variable(torch.Tensor(np.expand_dims(features[0].T, 0)).type(FLOAT_DTYPE))
-    p_i = Variable(torch.Tensor(np.expand_dims(features[1].T, 0)).type(FLOAT_DTYPE))
-    Q_i = features[2:]
+      q_i = Variable(torch.Tensor(np.expand_dims(features[0].T, 0)).type(FLOAT_DTYPE))
+      p_i = Variable(torch.Tensor(np.expand_dims(features[1].T, 0)).type(FLOAT_DTYPE))
+      Q_i = features[2:]
 
-    if USE_CUDA:
-      cnn.cuda()
-    optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
-    optimizer.zero_grad()
-    h_q = torch.squeeze(cnn(q_i), 0)
-    h_p = torch.squeeze(cnn(p_i), 0)
-    h_Q = []
-    for q in Q_i:
-      q = Variable(torch.Tensor(np.expand_dims(q.T, 0)).type(FLOAT_DTYPE))
-      h_Q.append(torch.squeeze(cnn(q), 0))
-    loss = get_loss(h_q, h_p, h_Q)
-    print i
-    print loss
-    loss.backward()
-    optimizer.step()
+      if USE_CUDA:
+        cnn.cuda()
+      optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
+      optimizer.zero_grad()
+      h_q = torch.squeeze(cnn(q_i), 0)
+      h_p = torch.squeeze(cnn(p_i), 0)
+      h_Q = []
+      for q in Q_i:
+        q = Variable(torch.Tensor(np.expand_dims(q.T, 0)).type(FLOAT_DTYPE))
+        h_Q.append(torch.squeeze(cnn(q), 0))
+      loss = get_loss(h_q, h_p, h_Q)
+      if j % 100 == 0:
+        print j
+        print loss
+      loss.backward()
+      optimizer.step()
 
 def eval_cnn(data, cnn, use_dev):
   """
@@ -130,8 +131,13 @@ if __name__ == "__main__":
   data.load_dev_data("../data/askubuntu/dev.txt")
   data.load_test_data("../data/askubuntu/test.txt")
 
-  cnn = CNN(EMBEDDING_LENGTH, HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-  train_cnn(data, cnn, 1)
-  eval_cnn(data, cnn, True)
+  lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
+  if USE_CUDA:
+    lstm.cuda()
+  train_lstm(data, lstm, 1)
+
+  # cnn = CNN(EMBEDDING_LENGTH, HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
+  # train_cnn(data, cnn, 1)
+  # eval_cnn(data, cnn, True)
 
 

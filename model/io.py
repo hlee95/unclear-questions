@@ -107,7 +107,7 @@ class Dataset(object):
   def get_body(self, id):
     return self.corpus[id][1]
 
-  def get_next_training_feature(self):
+  def get_next_training_feature(self, batch_size=1):
     q_i, p_i, Q_i = self.training_examples[self.next_training_idx]
     # Return vectors, which is an array of numpy matrices, where each matrix
     # has dimensions num_words by 200.
@@ -117,6 +117,7 @@ class Dataset(object):
     for q in Q_i:
       vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
     self.next_training_idx += 1
+    self.next_training_idx %= len(self.training_examples)
     return vectors
 
   def get_next_eval_feature(self, use_dev):
@@ -127,7 +128,9 @@ class Dataset(object):
       vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
     if use_dev:
       self.next_dev_idx += 1
+      self.next_dev_idx %= len(self.dev_data)
     else:
       self.next_test_idx += 1
+      self.next_test_idx %= len(self.test_data)
     return vectors, similar
 

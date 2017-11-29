@@ -16,7 +16,10 @@ class RNNLayer(nn.Module):
     Run one step of the RNN.
     Returns the new hidden state.
     """
-    hidden = self.i2h(torch.cat((input, prev_hidden), 0))
+    print "sizes:"
+    print input.size()
+    print prev_hidden.size()
+    hidden = self.i2h(torch.cat((input, prev_hidden), 1))
     hidden = self.h_activation(hidden)
     return hidden
 
@@ -46,19 +49,23 @@ class LSTM(nn.Module):
     h_t = o_t * self.activation(c_t)
     return h_t, c_t
 
-  def run_all(self, all_input):
+  def run_all(self, all_input, mask=None):
     """
-    Given all_input, which has size n by 200, where n is the number of
-    words, run the forward process n times and return the final h_n.
+    Given all_input, which has shape batch_size by max_num_words by 200, and a
+    mask with shape batch_size by max_num_words, indicating the true length of
+    each of the batch_size inputs, run the forward process max_num_words times
+    and return the final h_n of each of the inputs (using the mask to ignore
+    extra padding in some inputs).
 
     TODO: add an option to return the average of all h_i instead of just
     the last one h_n.
     """
-    n = all_input.size()[0]
-    h_t = Variable(torch.zeros(self.output_dim).type(self.float_dtype))
-    c_t = Variable(torch.zeros(self.output_dim).type(self.float_dtype))
-    for t in xrange(n):
-      h_t, c_t = self.forward(all_input[t, :], h_t, c_t)
+    batch_size = all_input.size()[0]
+    max_num_words = all_input.size()[1]
+    h_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+    c_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+    for t in xrange(max_num_words):
+      h_t, c_t = self.forward(all_input[:, t, :], h_t, c_t)
     return h_t
 
 
