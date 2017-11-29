@@ -4,6 +4,7 @@ This file handles loading data, batching data, and creating embeddings.
 
 import sys
 import numpy as np
+import random
 
 CORPUS_LIMIT = 2000000
 TRAINING_EXAMPLE_LIMIT = 200000
@@ -108,17 +109,34 @@ class Dataset(object):
     return self.corpus[id][1]
 
   def get_next_training_feature(self, batch_size=1):
-    q_i, p_i, Q_i = self.training_examples[self.next_training_idx]
-    # Return vectors, which is an array of numpy matrices, where each matrix
-    # has dimensions num_words by 200.
+    """
+    Return vectors, which is numpy matrix with dimensions
+      batch_size*22 by max_num_words by 200,
+    and masks, which is a binary numpy matrix with dimensions
+      batch_size*22 by max_num_words.
+    """
+    max_n = 0
     vectors = []
-    vectors.append(self.create_embedding_for_sentence(self.get_title(q_i)))
-    vectors.append(self.create_embedding_for_sentence(self.get_title(p_i)))
-    for q in Q_i:
-      vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
-    self.next_training_idx += 1
-    self.next_training_idx %= len(self.training_examples)
-    return vectors
+    masks = []
+    for _ in xrange(batch_size):
+      q_i, p_i, Q_i = self.training_examples[self.next_training_idx]
+      # Randomly sample 20 negative examples from the 100 given ones.
+      negatives = random.sample(xrange(100), 20)
+      for sample_id in [q_i, p_i] + [Q_i[j] for j in negatives]:
+        embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
+        max_n = max(max_n, len(embedding))
+        masks.append(np.ones(len(embedding)))
+        vectors.append(embedding)
+      self.next_training_idx += 1
+      self.next_training_idx %= len(self.training_examples)
+    # Pad all vectors and masks to the size of the max length one.
+    assert len(vectors) == len(masks)
+    padded_vectors = np.ndarray((batch_size*22, max_n, EMBEDDING_LENGTH))
+    padded_masks = np.ndarray((batch_size*22, max_n))
+    for i in xrange(len(vectors)):
+      padded_vectors[i] = np.pad(vectors[i], ((0, max_n - len(vectors[i])), (0, 0)), "constant", constant_values=0)
+      padded_masks[i] = np.pad(masks[i], (0, max_n - len(masks[i])), "constant", constant_values=0)
+    return padded_vectors, padded_masks
 
   def get_next_eval_feature(self, use_dev):
     query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
