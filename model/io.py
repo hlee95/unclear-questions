@@ -131,24 +131,43 @@ class Dataset(object):
       self.next_training_idx %= len(self.training_examples)
     # Pad all vectors and masks to the size of the max length one.
     assert len(vectors) == len(masks)
+    return self.pad_helper(vectors, masks, batch_size, max_n)
+
+  def get_next_eval_feature(self, use_dev, batch_size=1):
+    """
+    Returns 3 things:
+     - vectors, which is a batch_size*22 by max_n by 200 numpy matrix
+     - masks, which is a batch_size*22 by max_n numpy matrix
+     - similars, which is a batch_size*22 by 20 matrix of the indexes of the
+       samples in candidates that are known to be similar to the query
+    """
+    max_n = 0
+    vectors = []
+    similars = []
+    masks = []
+    for _ in xrange(batch_size):
+      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
+      similars.append(similar)
+      for sample in [query] + candidates:
+        embedding = vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
+        max_n = max(max_n, len(embedding))
+        masks.append(np.ones(len(embedding)))
+        vectors.append(embedding)
+      if use_dev:
+        self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
+      else:
+        self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
+    return self.pad_helper(vectors, masks, batch_size, max_n), np.array(similars)
+
+  def pad_helper(self, vectors, masks, batch_size, max_n):
+    """
+    Helper to pad the vectors and masks arrays when returning features to train
+    or evaluate on.
+    """
     padded_vectors = np.ndarray((batch_size*22, max_n, EMBEDDING_LENGTH))
     padded_masks = np.ndarray((batch_size*22, max_n))
     for i in xrange(len(vectors)):
       padded_vectors[i] = np.pad(vectors[i], ((0, max_n - len(vectors[i])), (0, 0)), "constant", constant_values=0)
       padded_masks[i] = np.pad(masks[i], (0, max_n - len(masks[i])), "constant", constant_values=0)
     return padded_vectors, padded_masks
-
-  def get_next_eval_feature(self, use_dev):
-    query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
-    vectors = []
-    vectors.append(self.create_embedding_for_sentence(self.get_title(query)))
-    for q in candidates:
-      vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
-    if use_dev:
-      self.next_dev_idx += 1
-      self.next_dev_idx %= len(self.dev_data)
-    else:
-      self.next_test_idx += 1
-      self.next_test_idx %= len(self.test_data)
-    return vectors, similar
 
