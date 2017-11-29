@@ -48,6 +48,7 @@ def train_lstm(data, lstm, num_epochs):
   for i in range(num_epochs):
     for j in xrange(len(data.training_examples)):
       features, masks = data.get_next_training_feature()
+      sys.exit(0)
 
       q_i = Variable(torch.Tensor(features[0]).type(FLOAT_DTYPE))
       p_i = Variable(torch.Tensor(features[1]).type(FLOAT_DTYPE))
