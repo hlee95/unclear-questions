@@ -61,7 +61,7 @@ def train_lstm(data, lstm, num_epochs, batch_size):
 
         loss = get_loss(h_q, h_p, h_Q)
         loss.backward(retain_graph=True)
-        
+
       optimizer.step()
 
 def train_cnn(data, cnn, num_epochs):

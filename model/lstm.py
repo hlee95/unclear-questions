@@ -16,9 +16,6 @@ class RNNLayer(nn.Module):
     Run one step of the RNN.
     Returns the new hidden state.
     """
-    print "sizes:"
-    print input.size()
-    print prev_hidden.size()
     hidden = self.i2h(torch.cat((input, prev_hidden), 1))
     hidden = self.h_activation(hidden)
     return hidden
