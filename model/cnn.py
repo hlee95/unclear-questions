@@ -16,10 +16,15 @@ class CNN(nn.Module):
     self.activation = activation
     self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-  def forward(self, input):
+  def forward(self, input, mask=None, return_average=True):
     """
     Compute using the equations given in the paper.
     """
     ct = self.conv(input)
     output = self.activation(ct[:,:,:-(self.filter_width-1)])
-    return output.mean(2) # take the mean over the sequence length dimension
+
+    if return_average:
+        return torch.sum(output, 2)/torch.sum(mask).unsqueeze(0)
+    else:
+        # TODO: take into account how long the sentence is by using mask
+        return output[:,:,-1]
