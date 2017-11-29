@@ -53,17 +53,15 @@ def train_lstm(data, lstm, num_epochs, batch_size):
       optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
       optimizer.zero_grad()
       h = lstm.run_all(Variable(torch.Tensor(features).type(FLOAT_DTYPE)), Variable(torch.Tensor(masks).type(FLOAT_DTYPE)))
-      # loss = Variable(torch.Tensor(1))
+
       for k in range(batch_size):
         h_q = h[k*NUM_EXAMPLES, :]
         h_p = h[k*NUM_EXAMPLES + 1, :]
         h_Q = h[k*NUM_EXAMPLES + 2 : (k+1)*NUM_EXAMPLES, :]
 
         loss = get_loss(h_q, h_p, h_Q)
-      # if i%100 == 0:
-      #   print i
-      #   print loss
-        loss.backward()
+        loss.backward(retain_graph=True)
+        
       optimizer.step()
 
 def train_cnn(data, cnn, num_epochs):

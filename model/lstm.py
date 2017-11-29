@@ -68,7 +68,7 @@ class LSTM(nn.Module):
     h = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
     c = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
     for t in xrange(max_num_words):
-      h[:,t,:], c[:,t,:] = self.forward(all_input[:, t, :], h[:,t-1,:], c[:,t-1,:])
+      h[:,t,:], c[:,t,:] = self.forward(all_input[:, t, :], h[:,t-1,:].clone(), c[:,t-1,:].clone())
     masked_h = h*mask.unsqueeze(2)
 
     if return_average:
