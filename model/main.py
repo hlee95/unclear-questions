@@ -13,6 +13,7 @@ import numpy as np
 HIDDEN_DIM = 128
 FILTER_WIDTH = 10
 DELTA = 0.00001
+NUM_EXAMPLES = 22
 
 USE_CUDA = torch.cuda.is_available()
 FLOAT_DTYPE = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
@@ -42,26 +43,23 @@ def get_loss(h_q, h_p, h_Q):
   else:
     return torch.dot(h_q, h_p) - torch.dot(h_q, h_p)
 
-def train_lstm(data, lstm, num_epochs):
+def train_lstm(data, lstm, num_epochs, batch_size):
   torch.manual_seed(1)
 
   for i in range(num_epochs):
     for j in xrange(len(data.training_examples)):
-      features, masks = data.get_next_training_feature()
-
-      q_i = Variable(torch.Tensor(features[0]).type(FLOAT_DTYPE))
-      p_i = Variable(torch.Tensor(features[1]).type(FLOAT_DTYPE))
-      Q_i = features[2:]
+      features, masks = data.get_next_training_feature(batch_size)
 
       optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
       optimizer.zero_grad()
-      h_q = lstm.run_all(torch.unsqueeze(q_i, 0))
-      h_p = lstm.run_all(torch.unsqueeze(p_i, 0))
-      h_Q = []
-      for q in Q_i:
-        q = Variable(torch.Tensor(q).type(FLOAT_DTYPE))
-        h_Q.append(lstm.run_all(torch.unsqueeze(q, 0)))
-      loss = get_loss(h_q, h_p, h_Q)
+      h = lstm.run_all(Variable(torch.Tensor(features).type(FLOAT_DTYPE)))
+      loss = Variable(Tensor())
+      for k in range(batch_size):
+        q_i = h[k*NUM_EXAMPLES, :]
+        p_i = h[k*NUM_EXAMPLES + 1, :]
+        Q_i = h[k*NUM_EXAMPLES + 2 : (k+1)*NUM_EXAMPLES, :]
+
+        loss += get_loss(h_q, h_p, h_Q)
       # if i%100 == 0:
       #   print i
       #   print loss

@@ -49,7 +49,7 @@ class LSTM(nn.Module):
     h_t = o_t * self.activation(c_t)
     return h_t, c_t
 
-  def run_all(self, all_input, mask=None):
+  def run_all(self, all_input, mask=None, return_average=True):
     """
     Given all_input, which has shape batch_size by max_num_words by 200, and a
     mask with shape batch_size by max_num_words, indicating the true length of
@@ -60,12 +60,21 @@ class LSTM(nn.Module):
     TODO: add an option to return the average of all h_i instead of just
     the last one h_n.
     """
+    # broadcasted_mask = np.repeat(mask, self.output_dim, 2)
     batch_size = all_input.size()[0]
     max_num_words = all_input.size()[1]
-    h_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
-    c_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+    # h_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+    # c_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+    h = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
+    c = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
     for t in xrange(max_num_words):
-      h_t, c_t = self.forward(all_input[:, t, :], h_t, c_t)
-    return h_t
+      h[:,t,:], c[:,t,:] = self.forward(all_input[:, t, :], h[:,t-1,:], c[:,t-1,:])
+    masked_h = h*mask.unsqueeze(2)
+
+    if return_average:
+        return torch.sum(masked_h, 1)/torch.sum(mask).unsqueeze(0)
+    else:
+        # TODO: take into account how long the sentence is by using mask
+        return masked_h[:,-1,:]
 
 
