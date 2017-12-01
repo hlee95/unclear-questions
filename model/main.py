@@ -148,5 +148,5 @@ if __name__ == "__main__":
   print "MAP:", cnn_eval.MAP()
   print "MRR:", cnn_eval.MRR()
   print "Precision@1:", cnn_eval.Precision(1)
-  print "Precision@4:", cnn_eval.Precision(4)
+  print "Precision@5:", cnn_eval.Precision(5)
 

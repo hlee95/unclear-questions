@@ -19,7 +19,7 @@ class Eval(object):
     			count += 1
     			precision += float(count)/(i+1)
     	sum_p += precision/count
-    return sum_p / len(self.data)
+    return sum_p / len(self.data) * 100
 
   def MRR(self):
     sum_r = 0
@@ -28,9 +28,9 @@ class Eval(object):
     		if line[i] == 1:
     			sum_r += 1./(i+1)
     			break
-    return sum_r / len(self.data)
+    return sum_r / len(self.data) * 100
 
   def Precision(self, precision_at):
     arr = self.data[:,:precision_at]
     precisions = np.sum(arr, 1)/float(precision_at)
-    return np.sum(precisions)/len(self.data)
+    return np.sum(precisions)/len(self.data) * 100
