@@ -16,6 +16,9 @@ class CNN(nn.Module):
     self.activation = activation
     self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
+    if use_cuda:
+        self.cuda()
+
   def forward(self, input, mask=None, return_average=True):
     """
     Compute using the equations given in the paper.

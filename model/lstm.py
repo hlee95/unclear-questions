@@ -33,6 +33,9 @@ class LSTM(nn.Module):
     self.activation = activation
     self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
+    if use_cuda:
+        self.cuda()
+
   def forward(self, input, prev_h, prev_c):
     """
     Compute using the equations given in the paper.

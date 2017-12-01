@@ -40,7 +40,6 @@ class Dataset(object):
       if count > CORPUS_LIMIT:
         break
     corpus_file.close()
-    print self.corpus[1]
 
   def load_vector_embeddings(self, filepath):
     print "Loading vector embeddings..."
@@ -149,7 +148,7 @@ class Dataset(object):
       query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
       similars.append(similar)
       for sample in [query] + candidates:
-        embedding = vectors.append(self.create_embedding_for_sentence(self.get_title(q)))
+        embedding = self.create_embedding_for_sentence(self.get_title(sample))
         max_n = max(max_n, len(embedding))
         masks.append(np.ones(len(embedding)))
         vectors.append(embedding)
@@ -157,7 +156,8 @@ class Dataset(object):
         self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
-    return self.pad_helper(vectors, masks, batch_size, max_n), np.array(similars)
+    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size, max_n)
+    return padded_vectors, padded_masks, np.array(similars)
 
   def pad_helper(self, vectors, masks, batch_size, max_n):
     """
