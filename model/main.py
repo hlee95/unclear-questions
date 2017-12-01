@@ -51,12 +51,15 @@ def get_loss(h_q, h_p, h_Q):
 
 def train_lstm(data, lstm, num_epochs, batch_size):
   torch.manual_seed(1)
-
+  optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
+  print "Training LSTM on %d samples..." % len(data.training_examples)
   for i in range(num_epochs):
-    for j in xrange(len(data.training_examples)/batch_size):
+    print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
+    num_batches = len(data.training_examples)/batch_size
+    print "num_batches", num_batches
+    for j in xrange(num_batches):
       features, masks = data.get_next_training_feature(batch_size)
 
-      optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
       optimizer.zero_grad()
       h = lstm.run_all(
         Variable(torch.Tensor(features).type(FLOAT_DTYPE)),
@@ -72,11 +75,34 @@ def train_lstm(data, lstm, num_epochs, batch_size):
         loss.backward(retain_graph=True)
 
       optimizer.step()
+      if j % (100) == 0:
+        print "batch number", j
+
+def eval_lstm(data, lstm, use_dev):
+  print "Evaluating LSTM..."
+  ranked_scores = []
+  for i in xrange(len(data.dev_data)):
+    features, masks, similar = data.get_next_eval_feature(use_dev)
+    h = lstm.run_all(
+      Variable(torch.Tensor(features).type(FLOAT_DTYPE)),
+      Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
+    )
+    candidate_scores = []
+    # The candidates are all results after the first one, which is h_q.
+    h_q = h[0]
+    for c in h[1:]:
+      candidate_scores.append(get_score(h_q, c))
+    # Sort candidate scores in decreasing order and remember which are the
+    # correct similar questions.
+    ranked_index = np.array(candidate_scores).argsort()
+    ranked_score = np.isin(ranked_index, similar).astype(int)
+    ranked_scores.append(ranked_score)
+  return np.array(ranked_scores)
 
 def train_cnn(data, cnn, num_epochs, batch_size):
   torch.manual_seed(1)
-  print "Training on %d samples..." % len(data.training_examples)
-
+  optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
+  print "Training CNN on %d samples..." % len(data.training_examples)
   for i in range(num_epochs):
     print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
     num_batches = len(data.training_examples)/batch_size
@@ -85,8 +111,6 @@ def train_cnn(data, cnn, num_epochs, batch_size):
       features, masks = data.get_next_training_feature(batch_size)
       features_T = np.swapaxes(features, 1, 2)
 
-      # TODO: should we be recreating the optimizer in every loop...?
-      optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
       optimizer.zero_grad()
       h = cnn(
         Variable(torch.Tensor(features_T).type(FLOAT_DTYPE)),
@@ -138,13 +162,19 @@ if __name__ == "__main__":
   data.load_dev_data("../data/askubuntu/dev.txt")
   data.load_test_data("../data/askubuntu/test.txt")
 
-  # lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
-  # train_lstm(data, lstm, 1, 2)
+  lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
+  train_lstm(data, lstm, 1, 5)
+  lstm_ranked_scores = eval_lstm(data, lstm, True)
+  lstm_eval = Eval(lstm_ranked_scores)
+  print "MAP:", lstm_eval.MAP()
+  print "MRR:", lstm_eval.MRR()
+  print "Precision@1:", lstm_eval.Precision(1)
+  print "Precision@5:", lstm_eval.Precision(5)
 
   cnn = CNN(EMBEDDING_LENGTH, HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
   train_cnn(data, cnn, 1, 5)
-  ranked_scores = eval_cnn(data, cnn, True)
-  cnn_eval = Eval(ranked_scores)
+  cnn_ranked_scores = eval_cnn(data, cnn, True)
+  cnn_eval = Eval(cnn_ranked_scores)
   print "MAP:", cnn_eval.MAP()
   print "MRR:", cnn_eval.MRR()
   print "Precision@1:", cnn_eval.Precision(1)
