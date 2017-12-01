@@ -25,9 +25,10 @@ class CNN(nn.Module):
     """
     ct = self.conv(input)
     output = self.activation(ct[:,:,:-(self.filter_width-1)])
+    masked_output = output*mask.unsqueeze(1)
 
     if return_average:
-        return torch.sum(output, 2)/torch.sum(mask).unsqueeze(0)
+        return torch.sum(masked_output, 2)/torch.sum(mask).unsqueeze(0)
     else:
         # TODO: take into account how long the sentence is by using mask
-        return output[:,:,-1]
+        return masked_output[:,:,-1]

@@ -60,21 +60,20 @@ class LSTM(nn.Module):
     TODO: add an option to return the average of all h_i instead of just
     the last one h_n.
     """
-    # broadcasted_mask = np.repeat(mask, self.output_dim, 2)
     batch_size = all_input.size()[0]
     max_num_words = all_input.size()[1]
-    # h_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
-    # c_t = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+
     h = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
     c = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
+    last_h = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
     for t in xrange(max_num_words):
       h[:,t,:], c[:,t,:] = self.forward(all_input[:, t, :], h[:,t-1,:].clone(), c[:,t-1,:].clone())
+      # if mask is 1, last_h takes the most recent hidden layer, else last_h stays the same
+      last_h = (1-mask[:,t]).unsqueeze(1)*last_h.clone() + mask[:,t].unsqueeze(1)*h[:,t,:].clone()
     masked_h = h*mask.unsqueeze(2)
 
     if return_average:
         return torch.sum(masked_h, 1)/torch.sum(mask).unsqueeze(0)
     else:
-        # TODO: take into account how long the sentence is by using mask
-        return masked_h[:,-1,:]
-
+        return last_h
 
