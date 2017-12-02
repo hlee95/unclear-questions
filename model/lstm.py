@@ -73,7 +73,7 @@ class LSTM(nn.Module):
     masked_h = h*mask.unsqueeze(2)
 
     if return_average:
-        return torch.sum(masked_h, 1)/torch.sum(mask).unsqueeze(0)
+      return torch.sum(masked_h, 1)/torch.sum(mask, 1).unsqueeze(1)
     else:
-        return last_h
+      return last_h
 

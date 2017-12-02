@@ -24,11 +24,20 @@ class CNN(nn.Module):
     Compute using the equations given in the paper.
     """
     ct = self.conv(input)
+    # output is batch_size x output_dim x max_num_words
+    # mask is batch_size x max_num_words
     output = self.activation(ct[:,:,:-(self.filter_width-1)])
-    masked_output = output*mask.unsqueeze(1)
+    masked_output = output*mask[:, None, :]
 
     if return_average:
-        return torch.sum(masked_output, 2)/torch.sum(mask).unsqueeze(0)
+        ans = torch.sum(masked_output, 2)/(torch.sum(mask, 1)[:, None])
+        return ans
     else:
-        # TODO: take into account how long the sentence is by using mask
-        return masked_output[:,:,-1]
+        max_num_words = output.size()[2]
+        batch_size = output.size()[0]
+
+        last_h = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+        for t in range(max_num_words):
+          last_h = (1-mask[:,t])[:,None]*last_h.clone() + (mask[:,t])[:,None]*masked_output[:,:,t].clone()
+
+        return last_h
