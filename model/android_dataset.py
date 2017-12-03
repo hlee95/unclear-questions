@@ -63,6 +63,7 @@ class AndroidDataset(Dataset):
       similar_indexes = range(len(positive_ids))
       assert len(similar_indexes) == len(positive_ids) and len(similar_indexes) > 0
       data.append((query_id, similar_indexes, candidates))
+    # TODO: this update might not be completely right, fix it.
     self.positives.update(positives)
     self.negatives.update(negatives)
     return data
@@ -78,12 +79,12 @@ class AndroidDataset(Dataset):
 
     # Return embeddings of randomly selected words in the corpus since
     # there aren't any training examples.
-    indexes = random.sample(xrange(len(this.corpus.keys())), batch_size)
-    ids = [this.corpus.keys()[i] for i in indexes]
+    indexes = random.sample(xrange(len(self.corpus.keys())), batch_size)
+    ids = [self.corpus.keys()[i] for i in indexes]
     max_n = 0
     vectors = []
     masks = []
-    for q_i in ids:
+    for sample_id in ids:
       embedding = None
       if use_title:
           embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
@@ -96,5 +97,36 @@ class AndroidDataset(Dataset):
     assert len(vectors) == len(masks)
     return self.pad_helper(vectors, masks, batch_size, max_n)
 
+  # Overriding.
+  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True):
+    """
+    Returns 3 things:
+     - vectors, which is a batch_size*22 by max_n by 200 numpy matrix
+     - masks, which is a batch_size*22 by max_n numpy matrix
+     - similars, which is a batch_size*22 by 20 matrix of the indexes of the
+       samples in candidates that are known to be similar to the query
+    """
+    max_n = 0
+    vectors = []
+    similars = []
+    masks = []
+    for _ in xrange(batch_size):
+      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
+      similars.append(similar)
+      for sample_id in [query] + candidates:
+        embedding = None
+        if use_title:
+          embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
+        else:
+          embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+        max_n = max(max_n, len(embedding))
+        masks.append(np.ones(len(embedding)))
+        vectors.append(embedding)
+      if use_dev:
+        self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
+      else:
+        self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
+    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 22, max_n)
+    return padded_vectors, padded_masks, np.array(similars)
 
 

@@ -53,6 +53,12 @@ class AskUbuntuDataset(Dataset):
       # Find out which candidates are the similar ones.
       similar_indexes = [i for i in xrange(len(candidates)) if candidates[i] in similar]
       assert len(similar_indexes) == len(similar) and len(similar_indexes) > 0
+      # Sanity check.
+      # for i in xrange(len(candidates)):
+      #   if candidates[i] in similar:
+      #     assert i in similar_indexes
+      #   else:
+      #     assert i not in similar_indexes
       data.append((int(query_id), similar_indexes, candidates))
     eval_file.close()
     return data

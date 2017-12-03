@@ -47,7 +47,7 @@ def get_loss(h_q, h_p, h_Q):
     if val.data[0] > best.data[0]:
       best = val
   # check if p = p+ is the best
-  if best.data[0] > DELTA:
+  if best.data[0] > 0:
     return best
   else:
     return torch.dot(h_q, h_p) - torch.dot(h_q, h_p)
@@ -97,7 +97,7 @@ def eval_lstm(data, lstm, use_dev):
       candidate_scores.append(get_score(h_q, c))
     # Sort candidate scores in decreasing order and remember which are the
     # correct similar questions.
-    ranked_index = np.array(candidate_scores).argsort()
+    ranked_index = np.array(candidate_scores).argsort()[::-1]
     ranked_score = np.isin(ranked_index, similar).astype(int)
     ranked_scores.append(ranked_score)
   return np.array(ranked_scores)
@@ -151,9 +151,10 @@ def eval_cnn(data, cnn, use_dev):
       candidate_scores.append(get_score(h_q, c))
     # Sort candidate scores in decreasing order and remember which are the
     # correct similar questions.
-    ranked_index = np.array(candidate_scores).argsort()
+    ranked_index = np.array(candidate_scores).argsort()[::-1]
     ranked_score = np.isin(ranked_index, similar).astype(int)
     ranked_scores.append(ranked_score)
+
   return np.array(ranked_scores)
 
 def part1(askubuntu_data):
@@ -188,13 +189,16 @@ if __name__ == "__main__":
   askubuntu_data.load_dev_data("../data/askubuntu/dev.txt")
   askubuntu_data.load_test_data("../data/askubuntu/test.txt")
 
-  android_data = AndroidDataset()
-  android_data.load_corpus("../data/android/corpus.tsv")
-  # TODO: Load vector embeddings from glove not from the askubuntu vectors pruned.
-  android_data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
-  android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
-  android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
+  # android_data = AndroidDataset()
+  # android_data.load_corpus("../data/android/corpus.tsv")
+  # # TODO: Load vector embeddings from glove not from the askubuntu vectors pruned.
+  # android_data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
+  # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
+  # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
+
+  # print android_data.get_next_training_feature(2)[0].shape
+  # print android_data.get_next_eval_feature(True)[0].shape
+  # print android_data.get_next_eval_feature(True)[2]
 
   part1(askubuntu_data)
-
 
