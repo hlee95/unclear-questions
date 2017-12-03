@@ -1,5 +1,7 @@
-from io import Dataset
-from io import EMBEDDING_LENGTH
+from dataset import Dataset
+from dataset import EMBEDDING_LENGTH
+from askubuntu_dataset import AskUbuntuDataset
+from android_dataset import AndroidDataset
 from lstm_encoder import LSTMEncoder
 from cnn_encoder import CNNEncoder
 from eval import Eval
@@ -104,11 +106,11 @@ def train_cnn(data, cnn, num_epochs, batch_size):
   torch.manual_seed(1)
   optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
   print "Training CNN on %d samples..." % len(data.training_examples)
-  for i in range(num_epochs):
+  for i in range(1):
     print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
     num_batches = len(data.training_examples)/batch_size
     print "num_batches", num_batches
-    for j in xrange(num_batches):
+    for j in xrange(3):
       features, masks = data.get_next_training_feature(batch_size)
       features_T = np.swapaxes(features, 1, 2)
 
@@ -154,18 +156,10 @@ def eval_cnn(data, cnn, use_dev):
     ranked_scores.append(ranked_score)
   return np.array(ranked_scores)
 
-
-if __name__ == "__main__":
-  data = Dataset()
-  data.load_corpus("../data/askubuntu/text_tokenized.txt")
-  data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
-  data.load_training_examples("../data/askubuntu/train_random.txt")
-  data.load_dev_data("../data/askubuntu/dev.txt")
-  data.load_test_data("../data/askubuntu/test.txt")
-
+def part1(askubuntu_data):
   # lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
-  # train_lstm(data, lstm, 1, 5)
-  # lstm_ranked_scores = eval_lstm(data, lstm, True)
+  # train_lstm(askubuntu_data, lstm, 1, 5)
+  # lstm_ranked_scores = eval_lstm(askubuntu_data, lstm, True)
   # lstm_eval = Eval(lstm_ranked_scores)
   # print "MAP:", lstm_eval.MAP()
   # print "MRR:", lstm_eval.MRR()
@@ -173,11 +167,34 @@ if __name__ == "__main__":
   # print "Precision@5:", lstm_eval.Precision(5)
 
   cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-  train_cnn(data, cnn, 3, 5)
-  cnn_ranked_scores = eval_cnn(data, cnn, True)
+  train_cnn(askubuntu_data, cnn, 3, 5)
+  cnn_ranked_scores = eval_cnn(askubuntu_data, cnn, True)
   cnn_eval = Eval(cnn_ranked_scores)
   print "MAP:", cnn_eval.MAP()
   print "MRR:", cnn_eval.MRR()
   print "Precision@1:", cnn_eval.Precision(1)
   print "Precision@5:", cnn_eval.Precision(5)
+
+def part2(askubuntu_data, android_data):
+  # TODO: Train and evaluate the adversarial domain adapatation network.
+  pass
+
+if __name__ == "__main__":
+  # Load all the data!
+  askubuntu_data = AskUbuntuDataset()
+  askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
+  askubuntu_data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
+  askubuntu_data.load_training_examples("../data/askubuntu/train_random.txt")
+  askubuntu_data.load_dev_data("../data/askubuntu/dev.txt")
+  askubuntu_data.load_test_data("../data/askubuntu/test.txt")
+
+  android_data = AndroidDataset()
+  android_data.load_corpus("../data/android/corpus.tsv")
+  # TODO: Load vector embeddings from glove not from the askubuntu vectors pruned.
+  android_data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
+  android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
+  android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
+
+  part1(askubuntu_data)
+
 

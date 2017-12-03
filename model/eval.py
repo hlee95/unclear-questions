@@ -1,6 +1,6 @@
 """
-This file handles the evaluation metrics we report for Part 1 of the project,
-which include MAP, MRR, P@1 and P@5.
+This file handles the evaluation metrics we report for the project, which
+include MAP, MRR, P@1, P@5, and AUC.
 """
 
 import numpy as np
@@ -34,3 +34,8 @@ class Eval(object):
     arr = self.data[:,:precision_at]
     precisions = np.sum(arr, 1)/float(precision_at)
     return np.sum(precisions)/len(self.data) * 100
+
+
+  def AUC(self, value=.05):
+    # TODO
+    pass
