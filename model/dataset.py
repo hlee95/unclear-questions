@@ -80,7 +80,7 @@ class Dataset(object):
       if word in self.word_embeddings:
         embedding.append(self.word_embeddings[word])
       else:
-        embedding.append(np.zeros(EMBEDDING_LENGTH))
+        embedding.append(self.word_embeddings["unk"])
     return np.array(embedding)
 
   def get_title(self, id):
@@ -162,6 +162,14 @@ class Dataset(object):
     for i in xrange(len(vectors)):
       padded_vectors[i] = np.pad(vectors[i], ((0, max_n - len(vectors[i])), (0, 0)), "constant", constant_values=0)
       padded_masks[i] = np.pad(masks[i], (0, max_n - len(masks[i])), "constant", constant_values=0)
+    # Sanity check...
+    # for i in xrange(len(padded_vectors)):
+    #   for j in xrange(max_n):
+    #     # If the embedding at position j is zero, then mask should be 0
+    #     if not padded_vectors[i][j].any():
+    #       assert padded_masks[i][j] == 0
+    #     else:
+    #       assert padded_masks[i][j] == 1
     return padded_vectors, padded_masks
 
 

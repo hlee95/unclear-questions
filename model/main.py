@@ -99,7 +99,7 @@ def eval_lstm(data, lstm, use_dev):
       candidate_scores.append(get_score(h_q, c))
     # Sort candidate scores in decreasing order and remember which are the
     # correct similar questions.
-    ranked_index = np.array(candidate_scores).argsort()
+    ranked_index = np.array(candidate_scores).argsort()[::-1]
     ranked_score = np.isin(ranked_index, similar).astype(int)
     ranked_scores.append(ranked_score)
   lstm_eval = Eval(np.array(ranked_scores))
@@ -161,7 +161,7 @@ def eval_cnn(data, cnn, use_dev):
       candidate_scores.append(get_score(h_q, c))
     # Sort candidate scores in decreasing order and remember which are the
     # correct similar questions.
-    ranked_index = np.array(candidate_scores).argsort()
+    ranked_index = np.array(candidate_scores).argsort()[::-1]
     ranked_score = np.isin(ranked_index, similar).astype(int)
     ranked_scores.append(ranked_score)
   cnn_eval = Eval(np.array(ranked_scores))
@@ -188,6 +188,7 @@ def part2(askubuntu_data, android_data):
 if __name__ == "__main__":
   if USE_CUDA:
     print "using CUDA"
+
   # Load all the data!
   askubuntu_data = AskUbuntuDataset()
   askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
@@ -204,5 +205,4 @@ if __name__ == "__main__":
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
 
   part1(askubuntu_data, mode='cnn')
-
 
