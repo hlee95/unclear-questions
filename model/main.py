@@ -163,7 +163,7 @@ if __name__ == "__main__":
   data.load_dev_data("../data/askubuntu/dev.txt")
   data.load_test_data("../data/askubuntu/test.txt")
 
-  lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
+  # lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
   # train_lstm(data, lstm, 1, 5)
   # lstm_ranked_scores = eval_lstm(data, lstm, True)
   # lstm_eval = Eval(lstm_ranked_scores)
@@ -173,11 +173,11 @@ if __name__ == "__main__":
   # print "Precision@5:", lstm_eval.Precision(5)
 
   cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-  # train_cnn(data, cnn, 3, 5)
-  # cnn_ranked_scores = eval_cnn(data, cnn, True)
-  # cnn_eval = Eval(cnn_ranked_scores)
-  # print "MAP:", cnn_eval.MAP()
-  # print "MRR:", cnn_eval.MRR()
-  # print "Precision@1:", cnn_eval.Precision(1)
-  # print "Precision@5:", cnn_eval.Precision(5)
+  train_cnn(data, cnn, 3, 5)
+  cnn_ranked_scores = eval_cnn(data, cnn, True)
+  cnn_eval = Eval(cnn_ranked_scores)
+  print "MAP:", cnn_eval.MAP()
+  print "MRR:", cnn_eval.MRR()
+  print "Precision@1:", cnn_eval.Precision(1)
+  print "Precision@5:", cnn_eval.Precision(5)
 
