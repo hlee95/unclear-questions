@@ -5,9 +5,9 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-class CNN(nn.Module):
+class CNNEncoder(nn.Module):
   def __init__(self, input_dim, output_dim, filter_width, activation=nn.Tanh(), use_cuda=False):
-    super(CNN, self).__init__()
+    super(CNNEncoder, self).__init__()
     # Create the different gates that we need.
     self.input_dim = input_dim
     self.output_dim = output_dim

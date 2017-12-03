@@ -20,9 +20,9 @@ class RNNLayer(nn.Module):
     hidden = self.h_activation(hidden)
     return hidden
 
-class LSTM(nn.Module):
+class LSTMEncoder(nn.Module):
   def __init__(self, input_dim, output_dim, activation=nn.Tanh(), use_cuda=False):
-    super(LSTM, self).__init__()
+    super(LSTMEncoder, self).__init__()
     # Create the different gates that we need.
     self.input_dim = input_dim
     self.output_dim = output_dim
