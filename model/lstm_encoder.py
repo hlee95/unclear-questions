@@ -54,11 +54,8 @@ class LSTMEncoder(nn.Module):
     Given all_input, which has shape batch_size by max_num_words by 200, and a
     mask with shape batch_size by max_num_words, indicating the true length of
     each of the batch_size inputs, run the forward process max_num_words times
-    and return the final h_n of each of the inputs (using the mask to ignore
-    extra padding in some inputs).
-
-    TODO: add an option to return the average of all h_i instead of just
-    the last one h_n.
+    and return the final h_n or the average h_t of each of the inputs (using
+    the mask to ignore extra padding in some inputs).
     """
     batch_size = all_input.size()[0]
     max_num_words = all_input.size()[1]
