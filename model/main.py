@@ -49,7 +49,7 @@ def get_loss(h_q, h_p, h_Q):
     if val.data[0] > best.data[0]:
       best = val
   # check if p = p+ is the best
-  if best.data[0] > DELTA:
+  if best.data[0] > 0:
     return best
   else:
     return torch.dot(h_q, h_p) - torch.dot(h_q, h_p)
@@ -102,6 +102,12 @@ def eval_lstm(data, lstm, use_dev):
     ranked_index = np.array(candidate_scores).argsort()
     ranked_score = np.isin(ranked_index, similar).astype(int)
     ranked_scores.append(ranked_score)
+  lstm_eval = Eval(np.array(ranked_scores))
+  print "MAP:", lstm_eval.MAP()
+  print "MRR:", lstm_eval.MRR()
+  print "Precision@1:", lstm_eval.Precision(1)
+  print "Precision@5:", lstm_eval.Precision(5)
+  return np.array(ranked_scores)
   return np.array(ranked_scores)
 
 def train_cnn(data, cnn, num_epochs, batch_size):
@@ -133,6 +139,8 @@ def train_cnn(data, cnn, num_epochs, batch_size):
       if j % (100) == 0:
         print "batch number", j
       optimizer.step()
+    eval_cnn(data, cnn, True)
+
 
 def eval_cnn(data, cnn, use_dev):
   """
@@ -156,26 +164,22 @@ def eval_cnn(data, cnn, use_dev):
     ranked_index = np.array(candidate_scores).argsort()
     ranked_score = np.isin(ranked_index, similar).astype(int)
     ranked_scores.append(ranked_score)
-  return np.array(ranked_scores)
-
-def part1(askubuntu_data):
-  # lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
-  # train_lstm(askubuntu_data, lstm, 1, 5)
-  # lstm_ranked_scores = eval_lstm(askubuntu_data, lstm, True)
-  # lstm_eval = Eval(lstm_ranked_scores)
-  # print "MAP:", lstm_eval.MAP()
-  # print "MRR:", lstm_eval.MRR()
-  # print "Precision@1:", lstm_eval.Precision(1)
-  # print "Precision@5:", lstm_eval.Precision(5)
-
-  cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-  train_cnn(askubuntu_data, cnn, 3, 5)
-  cnn_ranked_scores = eval_cnn(askubuntu_data, cnn, True)
-  cnn_eval = Eval(cnn_ranked_scores)
+  cnn_eval = Eval(np.array(ranked_scores))
   print "MAP:", cnn_eval.MAP()
   print "MRR:", cnn_eval.MRR()
   print "Precision@1:", cnn_eval.Precision(1)
   print "Precision@5:", cnn_eval.Precision(5)
+  return np.array(ranked_scores)
+
+
+def part1(askubuntu_data, mode):
+  if mode == 'lstm':
+    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
+    train_lstm(askubuntu_data, lstm, 1, 5)
+
+  if mode == 'cnn':
+    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
+    train_cnn(askubuntu_data, cnn, 3, 5)
 
 def part2(askubuntu_data, android_data):
   # TODO: Train and evaluate the adversarial domain adapatation network.
@@ -199,6 +203,6 @@ if __name__ == "__main__":
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
 
-  part1(askubuntu_data)
+  part1(askubuntu_data, mode='cnn')
 
 
