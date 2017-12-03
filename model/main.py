@@ -82,6 +82,8 @@ def train_lstm(data, lstm, num_epochs, batch_size):
       optimizer.step()
       if j % (250) == 0:
         print "batch number", j
+    eval_lstm(data, lstm, True)
+
 
 def eval_lstm(data, lstm, use_dev):
   print "Evaluating LSTM..."
@@ -107,7 +109,6 @@ def eval_lstm(data, lstm, use_dev):
   print "MRR:", lstm_eval.MRR()
   print "Precision@1:", lstm_eval.Precision(1)
   print "Precision@5:", lstm_eval.Precision(5)
-  return np.array(ranked_scores)
   return np.array(ranked_scores)
 
 def train_cnn(data, cnn, num_epochs, batch_size):
@@ -175,11 +176,11 @@ def eval_cnn(data, cnn, use_dev):
 def part1(askubuntu_data, mode):
   if mode == 'lstm':
     lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
-    train_lstm(askubuntu_data, lstm, 1, 5)
+    train_lstm(askubuntu_data, lstm, 50, 16)
 
   if mode == 'cnn':
     cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-    train_cnn(askubuntu_data, cnn, 3, 5)
+    train_cnn(askubuntu_data, cnn, 50, 16)
 
 def part2(askubuntu_data, android_data):
   # TODO: Train and evaluate the adversarial domain adapatation network.
