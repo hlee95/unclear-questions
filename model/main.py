@@ -16,8 +16,10 @@ import numpy as np
 CNN_HIDDEN_DIM = 667
 LSTM_HIDDEN_DIM = 128
 FILTER_WIDTH = 10
-DELTA = 0.00001
+DELTA = 0.2
 NUM_EXAMPLES = 22
+LR = 0.0001
+WD = 0.001
 
 USE_CUDA = torch.cuda.is_available()
 FLOAT_DTYPE = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
@@ -28,7 +30,7 @@ def get_score(q, p):
   tensors of size (n,) for some n.
   """
   score = torch.dot(q, p) / torch.norm(q) / torch.norm(p)
-  score = score.data.numpy()[0]
+  score = score.cpu().data.numpy()[0]
   return score
 
 def get_loss(h_q, h_p, h_Q):
@@ -54,7 +56,7 @@ def get_loss(h_q, h_p, h_Q):
 
 def train_lstm(data, lstm, num_epochs, batch_size):
   torch.manual_seed(1)
-  optimizer = optim.Adam(lstm.parameters(), lr=.001, weight_decay=.1)
+  optimizer = optim.Adam(lstm.parameters(), lr=LR, weight_decay=WD)
   print "Training LSTM on %d samples..." % len(data.training_examples)
   for i in range(num_epochs):
     print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
@@ -104,13 +106,13 @@ def eval_lstm(data, lstm, use_dev):
 
 def train_cnn(data, cnn, num_epochs, batch_size):
   torch.manual_seed(1)
-  optimizer = optim.Adam(cnn.parameters(), lr=.001, weight_decay=.1)
+  optimizer = optim.Adam(cnn.parameters(), lr=LR, weight_decay=WD)
   print "Training CNN on %d samples..." % len(data.training_examples)
-  for i in range(1):
+  for i in range(num_epochs):
     print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
     num_batches = len(data.training_examples)/batch_size
     print "num_batches", num_batches
-    for j in xrange(3):
+    for j in xrange(num_batches):
       features, masks = data.get_next_training_feature(batch_size)
       features_T = np.swapaxes(features, 1, 2)
 
@@ -181,6 +183,9 @@ def part2(askubuntu_data, android_data):
   pass
 
 if __name__ == "__main__":
+  if USE_CUDA:
+    print "using CUDA"
+
   # Load all the data!
   askubuntu_data = AskUbuntuDataset()
   askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
@@ -191,7 +196,7 @@ if __name__ == "__main__":
 
   # android_data = AndroidDataset()
   # android_data.load_corpus("../data/android/corpus.tsv")
-  # # TODO: Load vector embeddings from glove not from the askubuntu vectors pruned.
+  # TODO: Load vector embeddings from glove not from the askubuntu vectors pruned.
   # android_data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
