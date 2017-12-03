@@ -75,7 +75,7 @@ def train_lstm(data, lstm, num_epochs, batch_size):
         loss.backward(retain_graph=True)
 
       optimizer.step()
-      if j % (100) == 0:
+      if j % (250) == 0:
         print "batch number", j
 
 def eval_lstm(data, lstm, use_dev):
@@ -162,17 +162,17 @@ if __name__ == "__main__":
   data.load_dev_data("../data/askubuntu/dev.txt")
   data.load_test_data("../data/askubuntu/test.txt")
 
-  lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
-  train_lstm(data, lstm, 1, 5)
-  lstm_ranked_scores = eval_lstm(data, lstm, True)
-  lstm_eval = Eval(lstm_ranked_scores)
-  print "MAP:", lstm_eval.MAP()
-  print "MRR:", lstm_eval.MRR()
-  print "Precision@1:", lstm_eval.Precision(1)
-  print "Precision@5:", lstm_eval.Precision(5)
+  # lstm = LSTM(EMBEDDING_LENGTH, HIDDEN_DIM, use_cuda=USE_CUDA)
+  # train_lstm(data, lstm, 1, 5)
+  # lstm_ranked_scores = eval_lstm(data, lstm, True)
+  # lstm_eval = Eval(lstm_ranked_scores)
+  # print "MAP:", lstm_eval.MAP()
+  # print "MRR:", lstm_eval.MRR()
+  # print "Precision@1:", lstm_eval.Precision(1)
+  # print "Precision@5:", lstm_eval.Precision(5)
 
   cnn = CNN(EMBEDDING_LENGTH, HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-  train_cnn(data, cnn, 1, 5)
+  train_cnn(data, cnn, 3, 5)
   cnn_ranked_scores = eval_cnn(data, cnn, True)
   cnn_eval = Eval(cnn_ranked_scores)
   print "MAP:", cnn_eval.MAP()

@@ -60,10 +60,11 @@ class Dataset(object):
     train_file = open(filepath, "r")
     count = 0
     for line in train_file:
-      q_i, p_i, Q_i = line.split("\t")
+      q_i, P_i, Q_i = line.split("\t")
       # For now, only take first p_i if there multiple provided.
-      p_i = p_i.split(" ")[0]
-      self.training_examples.append((int(q_i), int(p_i), map(int, Q_i.split())))
+      P_i = map(int, P_i.split())
+      Q_i = map(int, Q_i.split())
+      self.training_examples.append((int(q_i), P_i, Q_i))
       count += 1
       if count > TRAINING_EXAMPLE_LIMIT:
         break
@@ -118,9 +119,12 @@ class Dataset(object):
     vectors = []
     masks = []
     for _ in xrange(batch_size):
-      q_i, p_i, Q_i = self.training_examples[self.next_training_idx]
+      q_i, P_i, Q_i = self.training_examples[self.next_training_idx]
+      # Randomly select a positive example p_i from P_i.
+      positive = random.randint(0, len(P_i) - 1)
+      p_i = P_i[positive]
       # Randomly sample 20 negative examples from the 100 given ones.
-      negatives = random.sample(xrange(100), 20)
+      negatives = random.sample(xrange(len(Q_i)), 20)
       for sample_id in [q_i, p_i] + [Q_i[j] for j in negatives]:
         embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
         max_n = max(max_n, len(embedding))
