@@ -25,7 +25,7 @@ def get_score(q, p):
   tensors of size (n,) for some n.
   """
   score = torch.dot(q, p) / torch.norm(q) / torch.norm(p)
-  score = score.data.numpy()[0]
+  score = score.cpu().data.numpy()[0]
   return score
 
 def get_loss(h_q, h_p, h_Q):
@@ -155,6 +155,8 @@ def eval_cnn(data, cnn, use_dev):
 
 
 if __name__ == "__main__":
+  if USE_CUDA:
+    print "using CUDA"
   data = Dataset()
   data.load_corpus("../data/askubuntu/text_tokenized.txt")
   data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
