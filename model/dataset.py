@@ -89,39 +89,43 @@ class Dataset(object):
   def get_body(self, id):
     return self.corpus[id][1]
 
-  def get_next_training_feature(self, batch_size=1, use_title=True):
+  def get_next_training_feature(self, batch_size=1, use_title=True, use_body=False):
+    title = None
+    body= None
+    if use_title:
+      title_vectors, title_masks = self.get_next_training_feature_helper(batch_size, True)
+      title = (title_vectors, title_masks)
+    if use_body:
+      body_vectors, body_masks = self.get_next_training_feature_helper(batch_size, False)
+      body = (body_vectors, body_masks)
+    return title, body
+
+  def get_next_training_feature_helper(self, batch_size=1, use_title=True):
     """
     Return vectors, which is numpy matrix with dimensions
       batch_size*22 by max_num_words by 200,
     and masks, which is a binary numpy matrix with dimensions
       batch_size*22 by max_num_words.
     """
-    max_n = 0
-    vectors = []
-    masks = []
-    for _ in xrange(batch_size):
-      q_i, P_i, Q_i = self.training_examples[self.next_training_idx]
-      # Randomly select a positive example p_i from P_i.
-      positive = random.randint(0, len(P_i) - 1)
-      p_i = P_i[positive]
-      # Randomly sample 20 negative examples from the 100 given ones.
-      negatives = random.sample(xrange(len(Q_i)), 20)
-      for sample_id in [q_i, p_i] + [Q_i[j] for j in negatives]:
-        embedding = None
-        if use_title:
-          embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
-        else:
-          embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
-        max_n = max(max_n, len(embedding))
-        masks.append(np.ones(len(embedding)))
-        vectors.append(embedding)
-      self.next_training_idx += 1
-      self.next_training_idx %= len(self.training_examples)
-    # Pad all vectors and masks to the size of the max length one.
-    assert len(vectors) == len(masks)
-    return self.pad_helper(vectors, masks, batch_size * 22, max_n)
+    raise NotImplementedError
 
-  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True):
+  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True, use_body=False):
+    title = None
+    body = None
+    similar = None
+    if use_title:
+      title_vectors, title_masks, title_similar = \
+        self.get_next_eval_feature_helper(use_dev, batch_size, True)
+      title = (title_vectors, title_masks)
+      similar = title_similar
+    if use_body:
+      body_vectors, body_masks, body_similar = \
+        self.get_next_eval_feature_helper(use_dev_dev, batch_size, False)
+      body = (body_vectors, body_masks)
+      similar = body_similar
+    return title, body, similar
+
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True):
     """
     Returns 3 things:
      - vectors, which is a batch_size*22 by max_n by 200 numpy matrix
@@ -129,28 +133,7 @@ class Dataset(object):
      - similars, which is a batch_size*22 by 20 matrix of the indexes of the
        samples in candidates that are known to be similar to the query
     """
-    max_n = 0
-    vectors = []
-    similars = []
-    masks = []
-    for _ in xrange(batch_size):
-      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
-      similars.append(similar)
-      for sample_id in [query] + candidates:
-        embedding = None
-        if use_title:
-          embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
-        else:
-          embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
-        max_n = max(max_n, len(embedding))
-        masks.append(np.ones(len(embedding)))
-        vectors.append(embedding)
-      if use_dev:
-        self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
-      else:
-        self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
-    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 22, max_n)
-    return padded_vectors, padded_masks, np.array(similars)
+    raise NotImplementedError
 
   def pad_helper(self, vectors, masks, batch_size, max_n):
     """

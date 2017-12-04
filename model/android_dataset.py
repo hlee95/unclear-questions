@@ -24,7 +24,6 @@ class AndroidDataset(Dataset):
     Populate self.dev_data.
     """
     self.dev_data = self.load_eval_data(pos_filepath, neg_filepath)
-    print self.dev_data[0]
 
   def load_test_data(self, pos_filepath, neg_filepath):
     """
@@ -69,7 +68,7 @@ class AndroidDataset(Dataset):
     return data
 
   # Overriding.
-  def get_next_training_feature(self, batch_size=1, use_title=True):
+  def get_next_training_feature_helper(self, batch_size=1, use_title=True):
     """
     Return vectors, which is numpy matrix with dimensions
       batch_size by max_num_words by 200,
@@ -98,7 +97,7 @@ class AndroidDataset(Dataset):
     return self.pad_helper(vectors, masks, batch_size, max_n)
 
   # Overriding.
-  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True):
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True, use_body=False):
     """
     Returns 3 things:
      - vectors, which is a batch_size*22 by max_n by 200 numpy matrix
@@ -126,7 +125,7 @@ class AndroidDataset(Dataset):
         self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
-    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 22, max_n)
+    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size, max_n)
     return padded_vectors, padded_masks, np.array(similars)
 
 

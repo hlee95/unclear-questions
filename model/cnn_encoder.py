@@ -29,14 +29,21 @@ class CNNEncoder(nn.Module):
     masked_output = output*mask[:, None, :]
 
     if return_average:
-        ans = torch.sum(masked_output, 2)/(torch.sum(mask, 1)[:, None])
-        return ans
+      ans = torch.sum(masked_output, 2)/(torch.sum(mask, 1)[:, None])
+      return ans
     else:
-        max_num_words = output.size()[2]
-        batch_size = output.size()[0]
+      max_num_words = output.size()[2]
+      batch_size = output.size()[0]
 
-        last_h = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
-        for t in range(max_num_words):
-          last_h = (1-mask[:,t])[:,None]*last_h.clone() + (mask[:,t])[:,None]*masked_output[:,:,t].clone()
+      last_h = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+      for t in range(max_num_words):
+        last_h = (1-mask[:,t])[:,None]*last_h.clone() + (mask[:,t])[:,None]*masked_output[:,:,t].clone()
 
-        return last_h
+      return last_h
+
+  def run_all(self, input, mask=None, return_average=True):
+    """
+    This is just so that LSTMEncoder and CNNEncoder expose the same interface.
+    """
+    return self.forward(input, mask, return_average)
+
