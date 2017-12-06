@@ -30,10 +30,11 @@ class AskUbuntuDataset(Dataset):
         lambda x: x not in self.skipped_questions,
         map(int, Q_i.split())
       )
-      self.training_examples.append((int(q_i), P_i, Q_i))
-      count += 1
-      if count > TRAINING_EXAMPLE_LIMIT:
-        break
+      for p_i in P_i:
+        self.training_examples.append((int(q_i), p_i, Q_i))
+        count += 1
+        if count > TRAINING_EXAMPLE_LIMIT:
+          break
     train_file.close()
 
   def load_dev_data(self, filepath):
@@ -93,10 +94,7 @@ class AskUbuntuDataset(Dataset):
     vectors = []
     masks = []
     for _ in xrange(batch_size):
-      q_i, P_i, Q_i = self.training_examples[self.next_training_idx]
-      # Randomly select a positive example p_i from P_i.
-      positive = random.randint(0, len(P_i) - 1)
-      p_i = P_i[positive]
+      q_i, p_i, Q_i = self.training_examples[self.next_training_idx]
       # Randomly sample 20 negative examples from the 100 given ones.
       negatives = random.sample(xrange(len(Q_i)), 20)
       for sample_id in [q_i, p_i] + [Q_i[j] for j in negatives]:
