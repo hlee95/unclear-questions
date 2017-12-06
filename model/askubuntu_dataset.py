@@ -94,6 +94,7 @@ class AskUbuntuDataset(Dataset):
       self.next_training_idx %= len(self.training_examples)
     # Pad all vectors and masks to the size of the max length one.
     assert len(vectors) == len(masks)
+    assert max_n <= self.MAX_SEQUENCE_LENGTH
     return self.pad_helper(vectors, masks, batch_size * 22, max_n)
 
   # Overriding.
@@ -125,5 +126,6 @@ class AskUbuntuDataset(Dataset):
         self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
+    assert max_n <= self.MAX_SEQUENCE_LENGTH
     padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 22, max_n)
     return padded_vectors, padded_masks, np.array(similars)

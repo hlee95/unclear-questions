@@ -15,6 +15,9 @@ EMBEDDING_LENGTH = 200
 class Dataset(object):
   def __init__(self):
     self.EMBEDDING_LENGTH = EMBEDDING_LENGTH
+    # Trim question title and body to this length.
+    self.MAX_SEQUENCE_LENGTH = 50
+
     # Map id to (title, body).
     self.corpus = {}
     # Map word to 200-dimensional vector.
@@ -54,6 +57,10 @@ class Dataset(object):
     count = 0
     for line in corpus_file:
       question_id, title, body = line.split("\t")
+      if len(title.split()) > self.MAX_SEQUENCE_LENGTH:
+        title = " ".join(title.split()[:self.MAX_SEQUENCE_LENGTH])
+      if len(body.split()) > self.MAX_SEQUENCE_LENGTH:
+        body = " ".join(body.split()[:self.MAX_SEQUENCE_LENGTH])
       self.corpus[int(question_id)] = (title, body)
       count += 1
       if count > CORPUS_LIMIT:

@@ -19,7 +19,7 @@ LSTM_HIDDEN_DIM = 128
 FILTER_WIDTH = 10
 DELTA = 0.2
 NUM_EXAMPLES = 22
-LR = 0.00005
+LR = 0.001
 WD = 0.0001
 BATCH_SIZE = 32
 NUM_EPOCHS = 50
@@ -136,7 +136,7 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
       # print avg_loss
       optimizer.step()
       if j % (250) == 0:
-        print "batch number", j
+        print "batch number %d, loss %f" % (j, avg_loss)
     eval_model(model, data, model_type, False)
     eval_model(model, data, model_type, True)
 
