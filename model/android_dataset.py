@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import random
-
+# from sklearn.feature_extraction.text import TfidfVectorizer
 from dataset import Dataset
 
 TRAINING_EXAMPLE_LIMIT = 200000
@@ -11,6 +11,8 @@ class AndroidDataset(Dataset):
     super(AndroidDataset, self).__init__()
     self.positives = {}
     self.negatives = {}
+
+    self.tfidf = None
 
   def load_training_examples(self, filepath):
     """
@@ -130,4 +132,27 @@ class AndroidDataset(Dataset):
     padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size, max_n)
     return padded_vectors, padded_masks, np.array(similars)
 
+  def init_tfidf_bow_vectors(self):
+    text_only = []
+    # for title, body in self.corpus.values():
+    #   text_only.append(title)
+    #   text_only.append(body)
+    # vectorizer = TfidfVectorizer()
+    # self.tfidf = vectorizer.fit_transform(corpus)
+
+  def get_next_eval_bow_feature(self, use_dev, batch_size=1):
+    """
+    Return weighted bag of words vectors for the next batch_size examples.
+    The first is the query, then the positives, then the negatives.
+    Return the labels as well, which is an array of None for query, 1 for
+    positive, and 0 for negative.
+    """
+    bow_vectors = []
+    labels = []
+    for _ in xrange(batch_size):
+      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
+      labels.append(similar)
+      for sample_id in candidates:
+        # Get BOW vector.
+        bow_vectors.append()
 
