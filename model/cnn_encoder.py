@@ -6,11 +6,12 @@ from torch import nn
 from torch.autograd import Variable
 
 class CNNEncoder(nn.Module):
-  def __init__(self, input_dim, output_dim, filter_width, activation=nn.Tanh(), use_cuda=False):
+  def __init__(self, input_dim, output_dim, filter_width, activation=nn.Tanh(), use_cuda=False, return_average=True):
     super(CNNEncoder, self).__init__()
     self.input_dim = input_dim
     self.output_dim = output_dim
     self.filter_width = filter_width
+    self.return_average = return_average
     self.conv = nn.Conv1d(input_dim, output_dim, filter_width, padding=filter_width-1)
     self.activation = activation
     self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
@@ -18,7 +19,7 @@ class CNNEncoder(nn.Module):
     if use_cuda:
         self.cuda()
 
-  def forward(self, input, mask=None, return_average=True):
+  def forward(self, input, mask=None):
     """
     Compute using the equations given in the paper.
     """
@@ -28,7 +29,7 @@ class CNNEncoder(nn.Module):
     output = self.activation(ct[:,:,:-(self.filter_width-1)])
     masked_output = output*mask[:, None, :]
 
-    if return_average:
+    if self.return_average:
       ans = torch.sum(masked_output, 2)/(torch.sum(mask, 1)[:, None])
       return ans
     else:
@@ -41,9 +42,9 @@ class CNNEncoder(nn.Module):
 
       return last_h
 
-  def run_all(self, input, mask=None, return_average=True):
+  def run_all(self, input, mask=None):
     """
     This is just so that LSTMEncoder and CNNEncoder expose the same interface.
     """
-    return self.forward(input, mask, return_average)
+    return self.forward(input, mask)
 

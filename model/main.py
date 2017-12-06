@@ -164,11 +164,11 @@ def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False)
 
 def part1(askubuntu_data, mode):
   if mode == ModelType.LSTM:
-    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
+    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA, return_average=False)
     train_model(mode, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE, use_title=True, use_body=False)
 
   if mode == ModelType.CNN:
-    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
+    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA, return_average=False)
     train_model(mode, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE, use_title=True, use_body=False)
 
 def part2(askubuntu_data, android_data):

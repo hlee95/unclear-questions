@@ -21,11 +21,12 @@ class RNNLayer(nn.Module):
     return hidden
 
 class LSTMEncoder(nn.Module):
-  def __init__(self, input_dim, output_dim, activation=nn.Tanh(), use_cuda=False):
+  def __init__(self, input_dim, output_dim, activation=nn.Tanh(), use_cuda=False, return_average=True):
     super(LSTMEncoder, self).__init__()
     # Create the different gates that we need.
     self.input_dim = input_dim
     self.output_dim = output_dim
+    self.return_average = return_average
     self.i_gate = RNNLayer(input_dim, output_dim, nn.Sigmoid())
     self.f_gate = RNNLayer(input_dim, output_dim, nn.Sigmoid())
     self.o_gate = RNNLayer(input_dim, output_dim, nn.Sigmoid())
@@ -49,7 +50,7 @@ class LSTMEncoder(nn.Module):
     h_t = o_t * self.activation(c_t)
     return h_t, c_t
 
-  def run_all(self, all_input, mask=None, return_average=True):
+  def run_all(self, all_input, mask=None):
     """
     Given all_input, which has shape batch_size by max_num_words by 200, and a
     mask with shape batch_size by max_num_words, indicating the true length of
@@ -69,7 +70,7 @@ class LSTMEncoder(nn.Module):
       last_h = (1-mask[:,t]).unsqueeze(1)*last_h.clone() + mask[:,t].unsqueeze(1)*h[:,t,:].clone()
     masked_h = h*mask.unsqueeze(2)
 
-    if return_average:
+    if self.return_average:
       return torch.sum(masked_h, 1)/torch.sum(mask, 1).unsqueeze(1)
     else:
       return last_h
