@@ -57,6 +57,9 @@ class Dataset(object):
     count = 0
     for line in corpus_file:
       question_id, title, body = line.split("\t")
+      if len(title.split()) == 0 or len(body.split()) == 0:
+        print "Skipping question_id %d because title or body is empty" % int(question_id)
+        continue
       if len(title.split()) > self.MAX_SEQUENCE_LENGTH:
         title = " ".join(title.split()[:self.MAX_SEQUENCE_LENGTH])
       if len(body.split()) > self.MAX_SEQUENCE_LENGTH:

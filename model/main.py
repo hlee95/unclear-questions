@@ -5,6 +5,7 @@ from android_dataset import AndroidDataset
 from lstm_encoder import LSTMEncoder
 from cnn_encoder import CNNEncoder
 from eval import Eval
+from meter import AUCMeter
 
 import sys
 from enum import Enum
@@ -31,7 +32,7 @@ class ModelType(Enum):
   CNN = 0
   LSTM = 1
 
-def get_score(q, p):
+def get_cosine_similarity(q, p):
   """
   Returns the cosine similarity between q and p, which are both expected to be
   tensors of size (n,) for some n.
@@ -71,42 +72,30 @@ def run_model(model, title, body, use_title, use_body, model_type):
   assert type(model_type) == ModelType
   assert use_title or use_body
   h = None
-  # Case where we only use title encodings.
-  if use_title and not use_body:
-    features, masks = title[0], title[1]
-    if model_type == ModelType.CNN:
-      features = np.swapaxes(features, 1, 2)
-    h = model.run_all(
-      Variable(torch.Tensor(features).type(FLOAT_DTYPE)),
-      Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
-    )
-  # Case where we only use body encodings.
-  if use_body and not use_title:
-    features, masks = body[0], body[1]
-    if model_type == ModelType.CNN:
-      features = np.swapaxes(features, 1, 2)
-    h = model.run_all(
-      Variable(torch.Tensor(features).type(FLOAT_DTYPE)),
-      Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
-    )
-  # Case where we average the title and body encodings.
   if use_body and use_title:
+    # Case where we average the title and body encodings.
     title_features, title_masks = title[0], title[1]
-    if model_type == ModelType.CNN:
-      title_features = np.swapaxes(title_features, 1, 2)
-    h_title = model.run_all(
-      Variable(torch.Tensor(title_features).type(FLOAT_DTYPE)),
-      Variable(torch.Tensor(title_masks).type(FLOAT_DTYPE))
-    )
+    h_title = run_model_helper(model, title_features, title_masks, model_type)
     body_features, body_masks = body[0], body[1]
-    if model_type == ModelType.CNN:
-      body_features = np.swapaxes(body_features, 1, 2)
-    h_body = model.run_all(
-      Variable(torch.Tensor(body_features).type(FLOAT_DTYPE)),
-      Variable(torch.Tensor(body_masks).type(FLOAT_DTYPE))
-    )
+    h_body = run_model_helper(model, body_features, body_masks, model_type)
     h = (h_title + h_body) / 2
+  else:
+    # Case where we only use either title or body encodings.
+    features, masks = None, None
+    if use_title:
+      features, masks = title[0], title[1]
+    else:
+      features, masks = body[0], body[1]
+    h = run_model_helper(model, features, masks, model_type)
   return h
+
+def run_model_helper(model, features, masks, model_type):
+  if model_type == ModelType.CNN:
+    features = np.swapaxes(features, 1, 2)
+  return model.run_all(
+    Variable(torch.Tensor(features).type(FLOAT_DTYPE)),
+    Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
+  )
 
 def train_model(model_type, data, model, num_epochs, batch_size, use_title=True, use_body=False):
   """
@@ -150,7 +139,7 @@ def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False)
     # The candidates are all results after the first one, which is h_q.
     h_q = h[0]
     for c in h[1:]:
-      candidate_scores.append(get_score(h_q, c))
+      candidate_scores.append(get_cosine_similarity(h_q, c))
     # Sort candidate scores in decreasing order and remember which are the
     # correct similar questions.
     ranked_index = np.array(candidate_scores).argsort()[::-1]
@@ -173,7 +162,22 @@ def part1(askubuntu_data, mode):
 
 def part2(askubuntu_data, android_data):
   # TODO: Train and evaluate the adversarial domain adapatation network.
-  pass
+  unsupervised_methods(android_data)
+
+def unsupervised_methods(android_data):
+  auc_eval = AUCMeter()
+  # Weighted bag of words.
+  batch_size = 16
+  for i in xrange(len(android_data.dev_data) / batch_size):
+    bows, labels = android_data.get_next_eval_bow_feature(use_dev, batch_size)
+    query = bows[0]
+    scores = []
+    for sample in bows[1:]:
+      scores.append(get_cosine_similarity(query, sample))
+    assert len(scores) == len(labels)
+    auc_eval.add(scores, labels)
+  # Report AUC.
+  print "AUC:", auc_eval.value(.05)
 
 if __name__ == "__main__":
   if USE_CUDA:
@@ -189,9 +193,9 @@ if __name__ == "__main__":
 
   # android_data = AndroidDataset()
   # android_data.load_corpus("../data/android/corpus.tsv")
+  # android_data.init_tfidf_bow_vectors()
   # android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
 
   part1(askubuntu_data, mode=ModelType.LSTM)
-
