@@ -19,8 +19,10 @@ LSTM_HIDDEN_DIM = 128
 FILTER_WIDTH = 10
 DELTA = 0.2
 NUM_EXAMPLES = 22
-LR = 0.0001
-WD = 0.001
+LR = 0.00005
+WD = 0.0001
+BATCH_SIZE = 32
+NUM_EPOCHS = 50
 
 USE_CUDA = torch.cuda.is_available()
 FLOAT_DTYPE = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
@@ -121,21 +123,25 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
       title, body = data.get_next_training_feature(batch_size, use_title, use_body)
       optimizer.zero_grad()
       h = run_model(model, title, body, use_title, use_body, model_type)
-
+      avg_loss = 0
       for k in range(batch_size):
         h_q = h[k*NUM_EXAMPLES, :]
         h_p = h[k*NUM_EXAMPLES + 1, :]
         h_Q = h[k*NUM_EXAMPLES + 2 : (k+1)*NUM_EXAMPLES, :]
 
         loss = get_loss(h_q, h_p, h_Q)
+        avg_loss += loss.data[0]
         loss.backward(retain_graph=True)
+      avg_loss /= batch_size
+      # print avg_loss
       optimizer.step()
       if j % (250) == 0:
         print "batch number", j
+    eval_model(model, data, model_type, False)
     eval_model(model, data, model_type, True)
 
 def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False):
-  print "Evaluating %s..." % (model_type.name)
+  print "Evaluating %s on %s dataset..." % (model_type.name, 'dev' if use_dev else 'train')
   ranked_scores = []
   for i in xrange(len(data.dev_data)):
     title, body, similar = data.get_next_eval_feature(use_dev)
@@ -159,11 +165,11 @@ def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False)
 def part1(askubuntu_data, mode):
   if mode == ModelType.LSTM:
     lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA)
-    train_model(mode, askubuntu_data, lstm, 50, 16, use_title=True, use_body=False)
+    train_model(mode, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE, use_title=True, use_body=False)
 
   if mode == ModelType.CNN:
     cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA)
-    train_model(mode, askubuntu_data, cnn, 50, 16, use_title=True, use_body=False)
+    train_model(mode, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE, use_title=True, use_body=False)
 
 def part2(askubuntu_data, android_data):
   # TODO: Train and evaluate the adversarial domain adapatation network.
@@ -187,5 +193,5 @@ if __name__ == "__main__":
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
 
-  part1(askubuntu_data, mode=ModelType.CNN)
+  part1(askubuntu_data, mode=ModelType.LSTM)
 
