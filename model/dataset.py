@@ -20,6 +20,8 @@ class Dataset(object):
 
     # Map id to (title, body).
     self.corpus = {}
+    # Store questions we skipped so we exclude them in training/eval.
+    self.skipped_questions = {}
     # Map word to 200-dimensional vector.
     self.word_embeddings = {}
     # Array of training examples, 3-tuples (q_i, p_i+, [Q_i-]).
@@ -59,6 +61,7 @@ class Dataset(object):
       question_id, title, body = line.split("\t")
       if len(title.split()) == 0 or len(body.split()) == 0:
         print "Skipping question_id %d because title or body is empty" % int(question_id)
+        self.skipped_questions[int(question_id)] = True
         continue
       if len(title.split()) > self.MAX_SEQUENCE_LENGTH:
         title = " ".join(title.split()[:self.MAX_SEQUENCE_LENGTH])

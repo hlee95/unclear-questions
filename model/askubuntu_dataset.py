@@ -19,8 +19,17 @@ class AskUbuntuDataset(Dataset):
     count = 0
     for line in train_file:
       q_i, P_i, Q_i = line.split("\t")
-      P_i = map(int, P_i.split())
-      Q_i = map(int, Q_i.split())
+      # for x in map(int, P_i.split() + Q_i.split()):
+      #   if x in self.skipped_questions:
+      #     print "in training"
+      P_i = filter(
+        lambda x: x not in self.skipped_questions,
+        map(int, P_i.split())
+      )
+      Q_i = filter(
+        lambda x: x not in self.skipped_questions,
+        map(int, Q_i.split())
+      )
       self.training_examples.append((int(q_i), P_i, Q_i))
       count += 1
       if count > TRAINING_EXAMPLE_LIMIT:
@@ -48,8 +57,17 @@ class AskUbuntuDataset(Dataset):
       # Skip entries with no similar ids given.
       if len(similar_ids) == 0:
         continue
-      similar = map(int, similar_ids.split())
-      candidates = map(int, candidate_ids.split())
+      # for x in map(int, similar_ids.split() + candidate_ids.split()):
+      #   if x in self.skipped_questions:
+      #     print "in eval"
+      similar = filter(
+        lambda x: x not in self.skipped_questions,
+        map(int, similar_ids.split())
+      )
+      candidates = filter(
+        lambda x: x not in self.skipped_questions,
+        map(int, candidate_ids.split())
+      )
       # Find out which candidates are the similar ones.
       similar_indexes = [i for i in xrange(len(candidates)) if candidates[i] in similar]
       assert len(similar_indexes) == len(similar) and len(similar_indexes) > 0
