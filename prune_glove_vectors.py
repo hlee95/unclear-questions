@@ -18,8 +18,10 @@ if __name__ == "__main__":
     for line in corpus_file:
       _, title, body = line.split("\t")
       for word in title.split():
+        word = word.lower()
         joint_corpus[word] = True
       for word in body.split():
+        word = word.lower()
         joint_corpus[word] = True
     corpus_file.close()
 
@@ -34,7 +36,7 @@ if __name__ == "__main__":
   added_words_count = 0
   added_words = {}
   for line in glove_input_file:
-    word = line.split()[0]
+    word = line.split()[0].lower()
     if word in joint_corpus or word == "unk":
       if word == "unk":
         print '"unk" added'
