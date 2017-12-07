@@ -159,7 +159,6 @@ class AndroidDataset(Dataset):
         tfidf_dict[word] = tfidf
       self.tfidf_dicts[key] = tfidf_dict
 
-
   def get_next_eval_bow_feature(self, use_dev, batch_size=1):
     """
     Return weighted bag of words vectors for the next batch_size examples.
@@ -169,13 +168,19 @@ class AndroidDataset(Dataset):
     """
     bow_vectors = []
     labels = []
+    num_negatives = 20
     for _ in xrange(batch_size):
       query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
-      labels_batch = np.zeros(len(candidates))
+      random_negative_idxs = random.sample(xrange(len(similar), len(candidates)), num_negatives)
+      for i in xrange(len(similar)):
+        assert i in similar
+        assert i not in random_negative_idxs
+      labels_batch = np.zeros(len(similar) + num_negatives)
       for i in similar:
         labels_batch[i] = 1
       labels.append(labels_batch)
-      for sample_id in [query] + candidates:
+      shorter_candidates_list = [candidates[i] for i in xrange(len(candidates)) if i in similar or i in random_negative_idxs]
+      for sample_id in [query] + shorter_candidates_list:
         # Get BOW vector.
         bow_vectors.append(self.tfidf_dicts[sample_id])
       if use_dev:
