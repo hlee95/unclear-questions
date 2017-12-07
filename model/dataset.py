@@ -63,11 +63,13 @@ class Dataset(object):
         print "Skipping question_id %d because title or body is empty" % int(question_id)
         self.skipped_questions[int(question_id)] = True
         continue
-      if len(title.split()) > self.MAX_SEQUENCE_LENGTH:
-        title = " ".join(title.split()[:self.MAX_SEQUENCE_LENGTH])
-      if len(body.split()) > self.MAX_SEQUENCE_LENGTH:
-        body = " ".join(body.split()[:self.MAX_SEQUENCE_LENGTH])
-      self.corpus[int(question_id)] = (title, body)
+      title_words = [word.lower() for word in title.split()]
+      body_words = [word.lower() for word in body.split()]
+      if len(title_words) > self.MAX_SEQUENCE_LENGTH:
+        title_words = title_words[:self.MAX_SEQUENCE_LENGTH]
+      if len(body_words) > self.MAX_SEQUENCE_LENGTH:
+        body_words = body_words[:self.MAX_SEQUENCE_LENGTH]
+      self.corpus[int(question_id)] = (" ".join(title_words), " ".join(body_words))
       count += 1
       if count > CORPUS_LIMIT:
         break

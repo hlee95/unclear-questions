@@ -209,7 +209,6 @@ if __name__ == "__main__":
   # android_data.init_tfidf_bow_vectors()
   # android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
-  #android_data.get_next_eval_bow_feature(True, batch_size=1)
 
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
 

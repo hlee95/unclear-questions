@@ -171,7 +171,10 @@ class AndroidDataset(Dataset):
     labels = []
     for _ in xrange(batch_size):
       query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
-      labels.append(np.isin(candidates, similar).astype(int))
+      labels_batch = np.zeros(len(candidates))
+      for i in similar:
+        labels_batch[i] = 1
+      labels.append(labels_batch)
       for sample_id in [query] + candidates:
         # Get BOW vector.
         bow_vectors.append(self.tfidf_dicts[sample_id])
