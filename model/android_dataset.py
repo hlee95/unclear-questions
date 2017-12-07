@@ -12,7 +12,7 @@ class AndroidDataset(Dataset):
     self.positives = {}
     self.negatives = {}
 
-    self.tfidf = None
+    self.tfidf_dicts = {}
 
   def load_training_examples(self, filepath):
     """
@@ -133,12 +133,32 @@ class AndroidDataset(Dataset):
     return padded_vectors, padded_masks, np.array(similars)
 
   def init_tfidf_bow_vectors(self):
-    text_only = []
-    # for title, body in self.corpus.values():
-    #   text_only.append(title)
-    #   text_only.append(body)
-    # vectorizer = TfidfVectorizer()
-    # self.tfidf = vectorizer.fit_transform(corpus)
+    # find vocab
+    # find df
+    # find tf
+    vocab_dict = {}
+    vocab_list = []
+    document_frequency = {}
+    for key in self.corpus:
+      text_only = self.corpus[key][0].split() + self.corpus[key][1].split()
+      for word in np.unique(text_only):
+        if not word in vocab_dict:
+          vocab_dict[word] = len(vocab_list)-1
+          vocab_list.append(word)
+        document_frequency[word] = document_frequency.get(word, 0) + 1
+
+    num_docs = len(self.corpus)
+    for key in self.corpus:
+      text_only = self.corpus[key][0].split() + self.corpus[key][1].split()
+      unique, counts = np.unique(text_only, return_counts=True)
+      # normalized_counts = counts / len(text_only)
+      tfidf_dict = {}
+      for i in range(len(unique)):
+        word = unique[i]
+        tfidf = np.log(float(num_docs) / document_frequency[word]) * counts[i] / len(text_only)
+        tfidf_dict[word] = tfidf
+      self.tfidf_dicts[key] = tfidf_dict
+
 
   def get_next_eval_bow_feature(self, use_dev, batch_size=1):
     """
@@ -151,8 +171,13 @@ class AndroidDataset(Dataset):
     labels = []
     for _ in xrange(batch_size):
       query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
-      labels.append(similar)
-      for sample_id in candidates:
+      labels.append(np.isin(candidates, similar).astype(int))
+      for sample_id in [query] + candidates:
         # Get BOW vector.
-        bow_vectors.append()
+        bow_vectors.append(self.tfidf_dicts[sample_id])
+      if use_dev:
+        self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
+      else:
+        self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
+    return (bow_vectors, labels)
 

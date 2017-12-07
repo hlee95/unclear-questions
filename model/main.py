@@ -41,6 +41,17 @@ def get_cosine_similarity(q, p):
   score = score.cpu().data.numpy()[0]
   return score
 
+def get_tfidf_cosine_similarity(d1, d2):
+  d1_norm_squared = 0
+  d2_norm_squared = 0
+  dot_product = 0
+  for word, val in d1.items():
+    dot_product += val * d2.get(word, 0)
+    d1_norm_squared += val*val
+  for val in d2.values():
+    d2_norm_squared += val*val
+  return dot_product/np.sqrt(d1_norm_squared*d2_norm_squared)
+
 def get_loss(h_q, h_p, h_Q):
   """
   Return the loss, given the encodings of q, p, and the encodings of
@@ -130,7 +141,7 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
     eval_model(model, data, model_type, True)
 
 def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False):
-  print "Evaluating %s on %s dataset..." % (model_type.name, 'dev' if use_dev else 'train')
+  print "Evaluating %s on %s dataset..." % (model_type.name, 'dev' if use_dev else 'test')
   ranked_scores = []
   for i in xrange(len(data.dev_data)):
     title, body, similar = data.get_next_eval_feature(use_dev)
@@ -167,15 +178,17 @@ def part2(askubuntu_data, android_data):
 def unsupervised_methods(android_data):
   auc_eval = AUCMeter()
   # Weighted bag of words.
-  batch_size = 16
+  batch_size = 1
   for i in xrange(len(android_data.dev_data) / batch_size):
-    bows, labels = android_data.get_next_eval_bow_feature(use_dev, batch_size)
-    query = bows[0]
-    scores = []
-    for sample in bows[1:]:
-      scores.append(get_cosine_similarity(query, sample))
-    assert len(scores) == len(labels)
-    auc_eval.add(scores, labels)
+    bows, labels = android_data.get_next_eval_bow_feature(True, batch_size)
+    for j in xrange(batch_size):
+      # TODO: this currently only works when batch size is 1, fix indexing
+      query = bows[0]
+      scores = []
+      for sample in bows[1:]:
+        scores.append(get_tfidf_cosine_similarity(query, sample))
+      assert len(scores) == len(labels[j])
+      auc_eval.add(np.array(scores), labels[j])
   # Report AUC.
   print "AUC:", auc_eval.value(.05)
 
@@ -196,6 +209,9 @@ if __name__ == "__main__":
   # android_data.init_tfidf_bow_vectors()
   # android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
+  #android_data.get_next_eval_bow_feature(True, batch_size=1)
+
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
 
   part1(askubuntu_data, mode=ModelType.LSTM)
+  # part2(askubuntu_data, android_data)
