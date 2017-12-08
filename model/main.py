@@ -24,7 +24,7 @@ DELTA = 0.2
 NUM_EXAMPLES = 22
 LR = 0.001
 WD = 0.0001
-BATCH_SIZE = 32
+BATCH_SIZE = 1
 NUM_EPOCHS = 50
 
 USE_CUDA = torch.cuda.is_available()
@@ -164,18 +164,34 @@ def eval_model(model, data, model_type, use_dev, use_title=True, use_body=True):
   print "Precision@1:", eval_obj.Precision(1)
   print "Precision@5:", eval_obj.Precision(5)
 
-def part1(askubuntu_data, mode):
+def part1(askubuntu_data, mode, android_data=None):
+  """
+  Runs the model from part 1.
+
+  If android_data is not None, also evaluates the model on the android_data
+  for the direct transfer section of part 2.
+  """
   if mode == ModelType.LSTM:
     lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
                        use_cuda=USE_CUDA, return_average=False)
     train_model(mode, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
                        use_title=True, use_body=True)
+    # Add in the evaluation on android because why not.
+    if android_data is not None:
+      print "----------Evaluating on android dataset..."
+      eval_model(lstm, android_data, mode, True)
+      eval_model(lstm, android_data, mode, False)
+
 
   if mode == ModelType.CNN:
     cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
                      use_cuda=USE_CUDA, return_average=False)
     train_model(mode, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE,
                      use_title=True, use_body=True)
+    if android_data is not None:
+      print "----------Evaluating on android dataset..."
+      eval_model(cnn, android_data, mode, True)
+      eval_model(cnn, android_data, mode, False)
 
 def part2(askubuntu_data, android_data):
   torch.manual_seed()
@@ -210,17 +226,6 @@ def unsupervised_methods(android_data):
   unsupervised_methods_helper(android_data, True)
   unsupervised_methods_helper(android_data, False)
 
-def direct_transfer(askubuntu_data, android_data):
-  print "Attempting direct transfer."
-  # Train on askubuntu_data as normal, then evaluate on android_data at end.
-  lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
-                     use_cuda=USE_CUDA, return_average=False)
-  # train_model(ModelType.LSTM, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
-  #             use_title=True, use_body=True)
-  print "--------------- Eval on android data"
-  eval_model(lstm, android_data, ModelType.LSTM, use_dev=True,
-             use_title=True, use_body=True)
-
 if __name__ == "__main__":
   if USE_CUDA:
     print "using CUDA"
@@ -241,6 +246,6 @@ if __name__ == "__main__":
   android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
   # unsupervised_methods(android_data)
 
-  # part1(askubuntu_data, mode=ModelType.CNN)
-  direct_transfer(askubuntu_data, android_data)
+  part1(askubuntu_data, mode=ModelType.LSTM, android_data=android_data)
+  # direct_transfer(askubuntu_data, android_data)
   # part2(askubuntu_data, android_data)
