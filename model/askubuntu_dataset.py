@@ -117,9 +117,9 @@ class AskUbuntuDataset(Dataset):
   def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True):
     """
     Returns 3 things:
-     - vectors, which is a batch_size*22 by max_n by 200 numpy matrix
-     - masks, which is a batch_size*22 by max_n numpy matrix
-     - similars, which is a batch_size*22 by 20 matrix of the indexes of the
+     - vectors, which is a batch_size*21 by max_n by 200 numpy matrix
+     - masks, which is a batch_size*21 by max_n numpy matrix
+     - similars, which is a batch_size by 20 matrix of the indexes of the
        samples in candidates that are known to be similar to the query
     """
     max_n = 0
@@ -143,5 +143,5 @@ class AskUbuntuDataset(Dataset):
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
     assert max_n <= self.MAX_SEQUENCE_LENGTH
-    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 22, max_n)
+    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 21, max_n)
     return padded_vectors, padded_masks, np.array(similars)

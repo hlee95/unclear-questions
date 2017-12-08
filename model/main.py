@@ -17,6 +17,8 @@ import numpy as np
 
 CNN_HIDDEN_DIM = 667
 LSTM_HIDDEN_DIM = 128
+DC_HIDDEN_DIM = 64
+LAMBDA = .5
 FILTER_WIDTH = 10
 DELTA = 0.2
 NUM_EXAMPLES = 22
@@ -108,18 +110,18 @@ def run_model_helper(model, features, masks, model_type):
     Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
   )
 
-def train_model(model_type, data, model, num_epochs, batch_size, use_title=True, use_body=False):
+def train_model(model_type, data, model, num_epochs, batch_size, use_title=True, use_body=True):
   """
   Train the given model with the given data.
   """
   torch.manual_seed(1)
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
   print "Training %s on %d samples..." % (model_type.name, len(data.training_examples))
-  for i in range(num_epochs):
+  for i in range(1):
     print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
     num_batches = len(data.training_examples)/batch_size
     print "num_batches", num_batches
-    for j in xrange(num_batches):
+    for j in xrange(1):
       title, body = data.get_next_training_feature(batch_size, use_title, use_body)
       optimizer.zero_grad()
       h = run_model(model, title, body, use_title, use_body, model_type)
@@ -140,7 +142,7 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
     eval_model(model, data, model_type, False)
     eval_model(model, data, model_type, True)
 
-def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False):
+def eval_model(model, data, model_type, use_dev, use_title=True, use_body=True):
   print "Evaluating %s on %s dataset..." % (model_type.name, 'dev' if use_dev else 'test')
   ranked_scores = []
   for i in xrange(len(data.dev_data)):
@@ -164,16 +166,25 @@ def eval_model(model, data, model_type, use_dev, use_title=True, use_body=False)
 
 def part1(askubuntu_data, mode):
   if mode == ModelType.LSTM:
-    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM, use_cuda=USE_CUDA, return_average=False)
-    train_model(mode, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE, use_title=True, use_body=False)
+    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
+                       use_cuda=USE_CUDA, return_average=False)
+    train_model(mode, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
+                       use_title=True, use_body=True)
 
   if mode == ModelType.CNN:
-    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH, use_cuda=USE_CUDA, return_average=False)
-    train_model(mode, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE, use_title=True, use_body=False)
+    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
+                     use_cuda=USE_CUDA, return_average=False)
+    train_model(mode, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE,
+                     use_title=True, use_body=True)
 
 def part2(askubuntu_data, android_data):
-  # TODO: Train and evaluate the adversarial domain adapatation network.
-  unsupervised_methods(android_data)
+  torch.manual_seed()
+  # TODO: Paper mentions increasing lambda over time, we should try that.
+  model = AdversarialDomainAdaptation(EMBEDDING_LENGTH, CNN_HIDDEN_DIM,
+                                      FILTER_WIDTH, DC_HIDDEN_DIM, LAMBDA,
+                                      use_cuda=USE_CUDA)
+  optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
+
 
 def unsupervised_methods(android_data):
   """
@@ -199,6 +210,17 @@ def unsupervised_methods(android_data):
   unsupervised_methods_helper(android_data, True)
   unsupervised_methods_helper(android_data, False)
 
+def direct_transfer(askubuntu_data, android_data):
+  print "Attempting direct transfer."
+  # Train on askubuntu_data as normal, then evaluate on android_data at end.
+  lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
+                     use_cuda=USE_CUDA, return_average=False)
+  # train_model(ModelType.LSTM, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
+  #             use_title=True, use_body=True)
+  print "--------------- Eval on android data"
+  eval_model(lstm, android_data, ModelType.LSTM, use_dev=True,
+             use_title=True, use_body=True)
+
 if __name__ == "__main__":
   if USE_CUDA:
     print "using CUDA"
@@ -211,13 +233,14 @@ if __name__ == "__main__":
   askubuntu_data.load_dev_data("../data/askubuntu/dev.txt")
   askubuntu_data.load_test_data("../data/askubuntu/test.txt")
 
-  # android_data = AndroidDataset()
-  # android_data.load_corpus("../data/android/corpus.tsv")
+  android_data = AndroidDataset()
+  android_data.load_corpus("../data/android/corpus.tsv")
   # android_data.init_tfidf_bow_vectors()
-  # android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
-  # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
-  # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
+  android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
+  android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
+  android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
   # unsupervised_methods(android_data)
 
-  part1(askubuntu_data, mode=ModelType.LSTM)
+  # part1(askubuntu_data, mode=ModelType.CNN)
+  direct_transfer(askubuntu_data, android_data)
   # part2(askubuntu_data, android_data)

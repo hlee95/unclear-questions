@@ -104,13 +104,16 @@ class Dataset(object):
   def get_body(self, id):
     return self.corpus[id][1]
 
-  def get_next_training_feature(self, batch_size=1, use_title=True, use_body=False):
+  def get_next_training_feature(self, batch_size=1, use_title=True, use_body=True):
     title = None
     body= None
     if use_title:
       title_vectors, title_masks = self.get_next_training_feature_helper(batch_size, True)
       title = (title_vectors, title_masks)
     if use_body:
+      if use_title:
+        # If we already got title features, acktrack so we get the same features.
+        self.next_training_idx = (self.next_training_idx - batch_size) % len(self.training_examples)
       body_vectors, body_masks = self.get_next_training_feature_helper(batch_size, False)
       body = (body_vectors, body_masks)
     return title, body
@@ -124,20 +127,29 @@ class Dataset(object):
     """
     raise NotImplementedError
 
-  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True, use_body=False):
+  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True, use_body=True):
     title = None
     body = None
     similar = None
+
     if use_title:
       title_vectors, title_masks, title_similar = \
         self.get_next_eval_feature_helper(use_dev, batch_size, True)
       title = (title_vectors, title_masks)
       similar = title_similar
+
     if use_body:
+      if use_title:
+        # If we already got title features, backtrack so we get the same features.
+        if use_dev:
+          self.next_dev_idx = (self.next_dev_idx - batch_size) % len(self.dev_data)
+        else:
+          self.next_test_idx = (self.next_test_idx - batch_size) % len(self.test_data)
       body_vectors, body_masks, body_similar = \
-        self.get_next_eval_feature_helper(use_dev_dev, batch_size, False)
+        self.get_next_eval_feature_helper(use_dev, batch_size, False)
       body = (body_vectors, body_masks)
       similar = body_similar
+
     return title, body, similar
 
   def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True):

@@ -64,7 +64,7 @@ class AndroidDataset(Dataset):
       similar_indexes = range(len(positive_ids))
       assert len(similar_indexes) == len(positive_ids) and len(similar_indexes) > 0
       data.append((query_id, similar_indexes, candidates))
-    # TODO: this update might not be completely right, fix it.
+    # Merge with global positive and negative dictionaries.
     self.positives.update(positives)
     self.negatives.update(negatives)
     return data
@@ -100,22 +100,28 @@ class AndroidDataset(Dataset):
     return self.pad_helper(vectors, masks, batch_size, max_n)
 
   # Overriding.
-  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True, use_body=False):
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True):
     """
     Returns 3 things:
-     - vectors, which is a batch_size*22 by max_n by 200 numpy matrix
-     - masks, which is a batch_size*22 by max_n numpy matrix
-     - similars, which is a batch_size*22 by 20 matrix of the indexes of the
+     - vectors, which is a batch_size*21 by max_n by 200 numpy matrix
+     - masks, which is a batch_size*21 by max_n numpy matrix
+     - similars, which is a batch_size*21 by 20 matrix of the indexes of the
        samples in candidates that are known to be similar to the query
     """
     max_n = 0
     vectors = []
     similars = []
     masks = []
+    num_candidates = 20 # Some positive, some negative.
     for _ in xrange(batch_size):
       query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
       similars.append(similar)
-      for sample_id in [query] + candidates:
+      random_negative_idxs = random.sample(xrange(len(similar), len(candidates)), num_candidates - len(similar))
+      for i in xrange(len(similar)):
+        assert i in similar
+        assert i not in random_negative_idxs
+      shorter_candidates_list = [candidates[i] for i in xrange(len(candidates)) if i in similar or i in random_negative_idxs]
+      for sample_id in [query] + shorter_candidates_list:
         embedding = None
         if use_title:
           embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
@@ -129,7 +135,7 @@ class AndroidDataset(Dataset):
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
     assert max_n <= self.MAX_SEQUENCE_LENGTH
-    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size, max_n)
+    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size*21, max_n)
     return padded_vectors, padded_masks, np.array(similars)
 
   def init_tfidf_bow_vectors(self):
