@@ -117,11 +117,11 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
   torch.manual_seed(1)
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
   print "Training %s on %d samples..." % (model_type.name, len(data.training_examples))
-  for i in range(1):
+  for i in range(num_epochs):
     print "==================\nEpoch: %d of %d\n==================" % (i + 1, num_epochs)
     num_batches = len(data.training_examples)/batch_size
     print "num_batches", num_batches
-    for j in xrange(1):
+    for j in xrange(num_batches):
       title, body = data.get_next_training_feature(batch_size, use_title, use_body)
       optimizer.zero_grad()
       h = run_model(model, title, body, use_title, use_body, model_type)
