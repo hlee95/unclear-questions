@@ -176,21 +176,28 @@ def part2(askubuntu_data, android_data):
   unsupervised_methods(android_data)
 
 def unsupervised_methods(android_data):
-  auc_eval = AUCMeter()
-  # Weighted bag of words.
-  batch_size = 1
-  for i in xrange(len(android_data.dev_data) / batch_size):
-    bows, labels = android_data.get_next_eval_bow_feature(True, batch_size)
-    for j in xrange(batch_size):
-      # TODO: this currently only works when batch size is 1, fix indexing
-      query = bows[0]
-      scores = []
-      for sample in bows[1:]:
-        scores.append(get_tfidf_cosine_similarity(query, sample))
-      assert len(scores) == len(labels[j])
-      auc_eval.add(np.array(scores), labels[j])
-  # Report AUC.
-  print "AUC:", auc_eval.value(.05)
+  """
+  Evaluate Tf-Idf for both dev and test sets.
+  """
+  def unsupervised_methods_helper(android_data, use_dev):
+    auc_eval = AUCMeter()
+    batch_size = 1
+    num_batches = len(android_data.dev_data) / batch_size if use_dev else len(android_data.test_data) / batch_size
+    for i in xrange(num_batches):
+      bows, labels = android_data.get_next_eval_bow_feature(use_dev, batch_size)
+      for j in xrange(batch_size):
+        # TODO: this currently only works when batch size is 1, fix indexing
+        query = bows[0]
+        scores = []
+        for sample in bows[1:]:
+          scores.append(get_tfidf_cosine_similarity(query, sample))
+        assert len(scores) == len(labels[j])
+        auc_eval.add(np.array(scores), labels[j])
+    # Report AUC.
+    print "AUC for %s: %f" %("dev" if use_dev else "test", auc_eval.value(.05))
+
+  unsupervised_methods_helper(android_data, True)
+  unsupervised_methods_helper(android_data, False)
 
 if __name__ == "__main__":
   if USE_CUDA:
@@ -209,8 +216,8 @@ if __name__ == "__main__":
   # android_data.init_tfidf_bow_vectors()
   # android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
   # android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
-
   # android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
+  # unsupervised_methods(android_data)
 
   part1(askubuntu_data, mode=ModelType.LSTM)
   # part2(askubuntu_data, android_data)

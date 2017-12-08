@@ -136,6 +136,7 @@ class AndroidDataset(Dataset):
     # find vocab
     # find df
     # find tf
+    print "Computing Tf-Idf vectors..."
     vocab_dict = {}
     vocab_list = []
     document_frequency = {}
