@@ -117,9 +117,10 @@ class AndroidDataset(Dataset):
       query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
       similars.append(similar)
       random_negative_idxs = random.sample(xrange(len(similar), len(candidates)), num_candidates - len(similar))
-      for i in xrange(len(similar)):
-        assert i in similar
-        assert i not in random_negative_idxs
+      # Sanity check.
+      # for i in xrange(len(similar)):
+      #   assert i in similar
+      #   assert i not in random_negative_idxs
       shorter_candidates_list = [candidates[i] for i in xrange(len(candidates)) if i in similar or i in random_negative_idxs]
       for sample_id in [query] + shorter_candidates_list:
         embedding = None
@@ -134,7 +135,6 @@ class AndroidDataset(Dataset):
         self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
-    assert max_n <= self.MAX_SEQUENCE_LENGTH
     padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size*21, max_n)
     return padded_vectors, padded_masks, np.array(similars)
 

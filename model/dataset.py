@@ -112,8 +112,9 @@ class Dataset(object):
       title = (title_vectors, title_masks)
     if use_body:
       if use_title:
-        # If we already got title features, acktrack so we get the same features.
-        self.next_training_idx = (self.next_training_idx - batch_size) % len(self.training_examples)
+        # If we already got title features, backtrack so we get the same features.
+        if len(self.training_examples) > 0:
+          self.next_training_idx = (self.next_training_idx - batch_size) % len(self.training_examples)
       body_vectors, body_masks = self.get_next_training_feature_helper(batch_size, False)
       body = (body_vectors, body_masks)
     return title, body

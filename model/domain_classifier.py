@@ -13,21 +13,23 @@ from torch import nn
 from torch.autograd import Variable
 
 class DomainClassifier(nn.Module):
-  def __init__(self, input_dim, hidden_dim, output_dim=2, use_cuda=False):
+  def __init__(self, input_dim, first_hidden_dim=300, second_hidden_dim=150,
+               output_dim=1, use_cuda=False):
     super(DomainClassifier, self).__init__()
 
-    self.fc1 = nn.Linear(input_dim, hidden_dim)
+    self.fc1 = nn.Linear(input_dim, first_hidden_dim)
     self.activation1 = nn.ReLU()
 
-    self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+    self.fc2 = nn.Linear(first_hidden_dim, second_hidden_dim)
     self.activation2 = nn.ReLU()
 
-    self.fc3 = nn.Linear(hidden_dim, output_dim)
-    self.activation3 = nn.LogSoftmax()
+    # No activation for the third layer since it will be passed through
+    # sigmoid in BCEWithLogitsLoss.
+    self.fc3 = nn.Linear(second_hidden_dim, output_dim)
 
   def forward(self, input):
     hidden = self.activation1(self.fc1(input))
     hidden = self.activation2(self.fc2(hidden))
-    output = self.activation3(self.fc3(hidden))
-    return output
+    output = self.fc3(hidden)
+    return output.double()
 
