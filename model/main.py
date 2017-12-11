@@ -281,7 +281,7 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
     eval_part2(model, android_data, False, model_type)
 
 def run_part2_model(model, title_vectors, body_vectors, title_masks,
-                     body_masks, model_type):
+                     body_masks, model_type, use_domain_classifier=True):
   """
   Return the average title/body embeddings and the predicte domain
   classification labels.
@@ -296,7 +296,7 @@ def run_part2_model(model, title_vectors, body_vectors, title_masks,
   body_vectors_var = Variable(torch.Tensor(body_vectors).type(FLOAT_DTYPE))
   body_masks_var = Variable(torch.Tensor(body_masks).type(FLOAT_DTYPE))
   embeddings, predicted_domain_labels = model.forward(title_vectors_var, body_vectors_var,
-    title_masks_var, body_masks_var, model_type==ModelType.CNN)
+    title_masks_var, body_masks_var, model_type==ModelType.CNN, use_domain_classifier)
   return embeddings, predicted_domain_labels
 
 def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, batch_size=1):
@@ -312,7 +312,7 @@ def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, 
       title_vectors, title_masks = title
       body_vectors, body_masks = body
       h, _ = run_part2_model(model, title_vectors, body_vectors, title_masks,
-                          body_masks, model_type)
+                          body_masks, model_type, False)
     candidate_scores = []
     # The candidates are all results after the first one, which is h_q.
     h_q = h[0]
