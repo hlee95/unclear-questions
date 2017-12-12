@@ -27,8 +27,13 @@ class AdversarialDomainAdaptation(nn.Module):
     self.domain_classifier_cnn = DomainClassifier(input_dim=cnn_hidden_dim, use_cuda=use_cuda)
     self.domain_classifier_lstm = DomainClassifier(input_dim=lstm_hidden_dim, use_cuda=use_cuda)
 
+    # self.domain_classifier_cnn.register_backward_hook(lambda x, y, z: self.gradient_reversal.gradient_reversal_func.backward(z))
+    # self.domain_classifier_cnn.register_backward_hook(self.hook)
+    # self.Lambda = Lambda
+
     if use_cuda:
       self.cuda()
+
 
   def forward(self, title, body, title_mask, body_mask, use_cnn=True, use_domain_classifier=True, return_average=True):
     """
@@ -51,11 +56,19 @@ class AdversarialDomainAdaptation(nn.Module):
     embedding = (title_embedding + body_embedding) / 2
     domain_label = None
     if use_domain_classifier:
-      print "using gradient reversal"
       reverse = self.gradient_reversal(embedding)
       if use_cnn:
         domain_label = self.domain_classifier_cnn(reverse)
       else:
         domain_label = self.domain_classifier_lstm(reverse)
     return embedding, domain_label
+
+  # def hook(self, module, grad_input, grad_output):
+  #   print "hook"
+  #   print grad_output[0].data[0]
+  #   new_grad = grad_output[0].mul_(-self.Lambda).float()
+  #   print new_grad.size()
+  #   print new_grad.data[0]
+  #   return (new_grad,)
+
 

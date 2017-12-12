@@ -7,6 +7,7 @@ from cnn_encoder import CNNEncoder
 from eval import Eval
 from meter import AUCMeter
 from adversarial_domain_adaptation import AdversarialDomainAdaptation
+from gradient_reversal import GradientReversalLayer
 import sys
 from enum import Enum
 
@@ -198,15 +199,15 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
   assert batch_size % 2 == 0
   torch.manual_seed(1)
   # TODO: Paper mentions increasing lambda over time, we should try that.
-  model = AdversarialDomainAdaptation(EMBEDDING_LENGTH, CNN_HIDDEN_DIM,
+  model = AdversarialDomainAdaptation(EMBEDDING_LENGTH, 1,
                                       FILTER_WIDTH, LSTM_HIDDEN_DIM,
                                       LAMBDA, USE_CUDA)
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
   num_training_examples = min(len(askubuntu_data.training_examples), len(android_data.corpus.keys()))
-  for i in xrange(1):
+  for i in xrange(num_epochs):
     num_batches = num_training_examples / batch_size
     print "Epoch number %d of %d with %d batches" % (i + 1, num_epochs, num_batches)
-    for j in xrange(1):
+    for j in xrange(num_batches):
       print "batch %d in epoch %d" %(j + 1, i + 1)
       optimizer.zero_grad()
 
@@ -283,7 +284,7 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
 def run_part2_model(model, title_vectors, body_vectors, title_masks,
                      body_masks, model_type, use_domain_classifier=True):
   """
-  Return the average title/body embeddings and the predicte domain
+  Return the average title/body embeddings and the predict domain
   classification labels.
   """
   # If using cnn, must swap axes to get input into the correct shape.
@@ -303,7 +304,7 @@ def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, 
   print "Begin eval_part2..."
   auc_eval = AUCMeter()
   num_batches = len(android_data.dev_data) / batch_size if use_dev else len(android_data.test_data) / batch_size
-  for i in xrange(5):
+  for i in xrange(num_batches):
     title, body, similar = android_data.get_next_eval_feature(use_dev)
     h = None
     if direct_transfer:
@@ -358,7 +359,7 @@ if __name__ == "__main__":
   # Load all the data!
   askubuntu_data = AskUbuntuDataset()
   askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
-  askubuntu_data.load_vector_embeddings("../data/askubuntu/vector/vectors_pruned.200.txt")
+  askubuntu_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
   askubuntu_data.load_training_examples("../data/askubuntu/train_random.txt")
   askubuntu_data.load_dev_data("../data/askubuntu/dev.txt")
   askubuntu_data.load_test_data("../data/askubuntu/test.txt")
@@ -375,4 +376,4 @@ if __name__ == "__main__":
   # direct_transfer(askubuntu_data, android_data)
 
   # NOTE batch_size must be an even number here!
-  part2(askubuntu_data, android_data, num_epochs=20, batch_size=4, model_type=ModelType.CNN)
+  part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
