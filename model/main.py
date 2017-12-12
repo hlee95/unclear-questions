@@ -16,17 +16,18 @@ import torch.optim as optim
 from torch.autograd import Variable
 import numpy as np
 import random
+import time
 
 CNN_HIDDEN_DIM = 667
 LSTM_HIDDEN_DIM = 128
-LAMBDA = .5
-FILTER_WIDTH = 10
+LAMBDA = 10**(-5)
+FILTER_WIDTH = 3
 DELTA = 0.2
 NUM_EXAMPLES = 22
 LR = 0.001
 WD = 0.0001
-BATCH_SIZE = 1
-NUM_EPOCHS = 50
+BATCH_SIZE = 32
+NUM_EPOCHS = 1
 
 USE_CUDA = torch.cuda.is_available()
 FLOAT_DTYPE = torch.cuda.FloatTensor if USE_CUDA else torch.FloatTensor
@@ -117,6 +118,7 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
   Train the given model with the given data.
   """
   torch.manual_seed(1)
+  start = time.time()
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
   print "Training %s on %d samples..." % (model_type.name, len(data.training_examples))
   for i in range(num_epochs):
@@ -140,9 +142,10 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
       # print avg_loss
       optimizer.step()
       if j % (250) == 0:
-        print "batch number %d, loss %f" % (j, avg_loss)
+        print "batch number %d, loss %f, %f seconds" % (j, avg_loss, time.time()-start)
     eval_model(model, data, model_type, False)
     eval_model(model, data, model_type, True)
+    print "Epoch ended after %f seconds" % (time.time()-start)
 
 def eval_model(model, data, model_type, use_dev, use_title=True, use_body=True):
   print "Evaluating %s on %s dataset..." % (model_type.name, 'dev' if use_dev else 'test')
@@ -176,7 +179,7 @@ def part1(askubuntu_data, model_type, android_data=None):
   """
   if model_type == ModelType.LSTM:
     lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
-                       use_cuda=USE_CUDA, return_average=False)
+                       use_cuda=USE_CUDA, return_average=True)
     train_model(model_type, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
                        use_title=True, use_body=True)
     # Add in the evaluation on android because why not.
@@ -187,7 +190,7 @@ def part1(askubuntu_data, model_type, android_data=None):
 
   if model_type == ModelType.CNN:
     cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
-                     use_cuda=USE_CUDA, return_average=False)
+                     use_cuda=USE_CUDA, return_average=True)
     train_model(model_type, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE,
                      use_title=True, use_body=True)
     if android_data is not None:
@@ -372,8 +375,8 @@ if __name__ == "__main__":
   android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
   # unsupervised_methods(android_data)
 
-  # part1(askubuntu_data, model_type=ModelType.LSTM, android_data=android_data)
+  part1(askubuntu_data, model_type=ModelType.LSTM, android_data=android_data)
   # direct_transfer(askubuntu_data, android_data)
 
   # NOTE batch_size must be an even number here!
-  part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
+  # part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
