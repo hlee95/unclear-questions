@@ -203,10 +203,10 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
                                       LAMBDA, USE_CUDA)
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
   num_training_examples = min(len(askubuntu_data.training_examples), len(android_data.corpus.keys()))
-  for i in xrange(num_epochs):
+  for i in xrange(1):
     num_batches = num_training_examples / batch_size
     print "Epoch number %d of %d with %d batches" % (i + 1, num_epochs, num_batches)
-    for j in xrange(num_batches):
+    for j in xrange(1):
       print "batch %d in epoch %d" %(j + 1, i + 1)
       optimizer.zero_grad()
 
@@ -303,7 +303,7 @@ def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, 
   print "Begin eval_part2..."
   auc_eval = AUCMeter()
   num_batches = len(android_data.dev_data) / batch_size if use_dev else len(android_data.test_data) / batch_size
-  for i in xrange(num_batches):
+  for i in xrange(5):
     title, body, similar = android_data.get_next_eval_feature(use_dev)
     h = None
     if direct_transfer:
@@ -375,4 +375,4 @@ if __name__ == "__main__":
   # direct_transfer(askubuntu_data, android_data)
 
   # NOTE batch_size must be an even number here!
-  part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
+  part2(askubuntu_data, android_data, num_epochs=20, batch_size=4, model_type=ModelType.CNN)

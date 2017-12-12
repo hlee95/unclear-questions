@@ -8,17 +8,28 @@ Lambda in the backwards direction.
 import torch
 from torch import nn
 
-class GradientReversalLayer(nn.Module):
-  def __init__(self, Lambda, use_cuda=False):
-    super(GradientReversalLayer, self).__init__()
-    self.Lambda = Lambda
+class GradientReversalFunction(torch.autograd.Function):
 
-    if use_cuda:
-      self.cuda()
+  def __init__(self, Lambda):
+    self.Lambda = Lambda
 
   def forward(self, input):
     return input
 
   def backward(self, grad_output):
-    return -self.Lambda * grad_output
+    print "backward"
+    return -self.Lambda * grad_output.clone()
+
+class GradientReversalLayer(nn.Module):
+  def __init__(self, Lambda, use_cuda=False):
+    super(GradientReversalLayer, self).__init__()
+
+    self.Lambda = Lambda
+    self.gradient_reversal_func = GradientReversalFunction(Lambda)
+
+    if use_cuda:
+      self.cuda()
+
+  def forward(self, input):
+    return self.gradient_reversal_func(input)
 

@@ -30,7 +30,7 @@ class AdversarialDomainAdaptation(nn.Module):
     if use_cuda:
       self.cuda()
 
-  def forward(self, title, body, title_mask, body_mask, use_cnn=True, use_domain_classifider=True, return_average=True):
+  def forward(self, title, body, title_mask, body_mask, use_cnn=True, use_domain_classifier=True, return_average=True):
     """
     Runs one forward pass on the input.
 
@@ -50,7 +50,8 @@ class AdversarialDomainAdaptation(nn.Module):
       body_embedding = self.question_encoder_lstm.run_all(body, body_mask, return_average)
     embedding = (title_embedding + body_embedding) / 2
     domain_label = None
-    if use_domain_classifider:
+    if use_domain_classifier:
+      print "using gradient reversal"
       reverse = self.gradient_reversal(embedding)
       if use_cnn:
         domain_label = self.domain_classifier_cnn(reverse)
