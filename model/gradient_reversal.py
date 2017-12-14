@@ -27,11 +27,12 @@ class GradientReversalLayer(nn.Module):
     super(GradientReversalLayer, self).__init__()
 
     self.Lambda = Lambda
-    self.gradient_reversal_func = GradientReversalFunction(self.Lambda)
 
     if use_cuda:
       self.cuda()
 
   def forward(self, input):
-    return self.gradient_reversal_func(input)
+    return GradientReversalFunction(self.Lambda)(input)
 
+  def change_lambda(self, Lambda):
+    self.Lambda = Lambda

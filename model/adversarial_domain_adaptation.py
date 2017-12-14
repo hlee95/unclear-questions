@@ -22,7 +22,7 @@ class AdversarialDomainAdaptation(nn.Module):
   def __init__(self, input_dim, cnn_hidden_dim, filter_width, lstm_hidden_dim, Lambda, use_cuda):
     super(AdversarialDomainAdaptation, self).__init__()
     self.question_encoder_cnn = CNNEncoder(input_dim, cnn_hidden_dim, filter_width, use_cuda=use_cuda)
-    self.question_encoder_lstm = LSTMEncoder(input_dim, lstm_hidden_dim)
+    self.question_encoder_lstm = LSTMEncoder(input_dim, lstm_hidden_dim, use_cuda=use_cuda)
     self.gradient_reversal = GradientReversalLayer(Lambda, use_cuda)
     self.domain_classifier_cnn = DomainClassifier(input_dim=cnn_hidden_dim, use_cuda=use_cuda)
     self.domain_classifier_lstm = DomainClassifier(input_dim=lstm_hidden_dim, use_cuda=use_cuda)
@@ -51,8 +51,8 @@ class AdversarialDomainAdaptation(nn.Module):
       title_embedding = self.question_encoder_cnn.run_all(title, title_mask)
       body_embedding = self.question_encoder_cnn.run_all(body, body_mask)
     else:
-      title_embedding = self.question_encoder_lstm.run_all(title, title_mask, return_average)
-      body_embedding = self.question_encoder_lstm.run_all(body, body_mask, return_average)
+      title_embedding = self.question_encoder_lstm.run_all(title, title_mask)
+      body_embedding = self.question_encoder_lstm.run_all(body, body_mask)
     embedding = (title_embedding + body_embedding) / 2
     domain_label = None
     if use_domain_classifier:
@@ -63,12 +63,7 @@ class AdversarialDomainAdaptation(nn.Module):
         domain_label = self.domain_classifier_lstm(reverse)
     return embedding, domain_label
 
-  # def hook(self, module, grad_input, grad_output):
-  #   print "hook"
-  #   print grad_output[0].data[0]
-  #   new_grad = grad_output[0].mul_(-self.Lambda).float()
-  #   print new_grad.size()
-  #   print new_grad.data[0]
-  #   return (new_grad,)
+  def change_lambda(self, Lambda):
+    self.gradient_reversal.change_lambda(Lambda)
 
 

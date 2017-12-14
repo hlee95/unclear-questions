@@ -20,11 +20,11 @@ import time
 
 CNN_HIDDEN_DIM = 667
 LSTM_HIDDEN_DIM = 128
-LAMBDA = 10**(-5)
+LAMBDA = 0.1
 FILTER_WIDTH = 3
 DELTA = 0.2
 NUM_EXAMPLES = 22
-LR = 0.001
+LR = 0.0001
 WD = 0.0001
 BATCH_SIZE = 32
 NUM_EPOCHS = 1
@@ -139,7 +139,6 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
         avg_loss += loss.data[0]
         loss.backward(retain_graph=True)
       avg_loss /= batch_size
-      # print avg_loss
       optimizer.step()
       if j % (250) == 0:
         print "batch number %d, loss %f, %f seconds" % (j, avg_loss, time.time()-start)
@@ -202,16 +201,17 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
   assert batch_size % 2 == 0
   torch.manual_seed(1)
   # TODO: Paper mentions increasing lambda over time, we should try that.
-  model = AdversarialDomainAdaptation(EMBEDDING_LENGTH, 1,
+  model = AdversarialDomainAdaptation(EMBEDDING_LENGTH, CNN_HIDDEN_DIM,
                                       FILTER_WIDTH, LSTM_HIDDEN_DIM,
                                       LAMBDA, USE_CUDA)
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
   num_training_examples = min(len(askubuntu_data.training_examples), len(android_data.corpus.keys()))
   for i in xrange(num_epochs):
     num_batches = num_training_examples / batch_size
+    model.change_lambda(LAMBDA*(i+1))
+    print 'new lambda:', LAMBDA*(i+1)
     print "Epoch number %d of %d with %d batches" % (i + 1, num_epochs, num_batches)
     for j in xrange(num_batches):
-      print "batch %d in epoch %d" %(j + 1, i + 1)
       optimizer.zero_grad()
 
       # Get batch_size/2 of askubuntu_data, and batch_size/2 of android_data.
@@ -266,19 +266,28 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
       embeddings, predicted_domain_labels = run_part2_model(model, title_vectors,
         body_vectors, title_masks, body_masks, model_type)
 
+      # embeddings, predicted_domain_labels = run_part2_model(model, askubuntu_title[0],
+      #   askubuntu_body[0], askubuntu_title[1], askubuntu_body[1], model_type)
+
       # Get multimargin loss.
+      avg_mm_loss = 0
       for k in xrange(batch_size):
-        h_q = embeddings[k * NUM_EXAMPLES, :]
-        h_p = embeddings[k * NUM_EXAMPLES + 1, :]
-        h_Q = embeddings[k * NUM_EXAMPLES + 2 : (k + 1) * NUM_EXAMPLES, :]
-        multimargin_loss = get_multimargin_loss(h_q, h_p, h_Q)
-        multimargin_loss.backward(retain_graph=True)
+        if real_domain_labels[k * NUM_EXAMPLES] == 1:
+          h_q = embeddings[k * NUM_EXAMPLES, :]
+          h_p = embeddings[k * NUM_EXAMPLES + 1, :]
+          h_Q = embeddings[k * NUM_EXAMPLES + 2 : (k + 1) * NUM_EXAMPLES, :]
+          multimargin_loss = get_multimargin_loss(h_q, h_p, h_Q)
+          avg_mm_loss += multimargin_loss
+          multimargin_loss.backward(retain_graph=True)
+      avg_mm_loss /= (batch_size/2)
       # Use BCE Loss for the domain classification.
       domain_loss_func = torch.nn.BCEWithLogitsLoss()
       real_domain_labels = Variable(torch.Tensor(real_domain_labels).type(DOUBLE_DTYPE))
       domain_loss = domain_loss_func(predicted_domain_labels.squeeze(1), real_domain_labels)
       domain_loss.backward()
-
+      if j % 250 == 0:
+        print 'batch %d' % j
+        print 'multimargin loss %f, domain loss %f' % (avg_mm_loss.cpu().data.numpy()[0], domain_loss.cpu().data.numpy()[0])
       optimizer.step()
     # At the end of each epoch, evaluate.
     eval_part2(model, android_data, True, model_type)
@@ -362,7 +371,7 @@ if __name__ == "__main__":
   # Load all the data!
   askubuntu_data = AskUbuntuDataset()
   askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
-  askubuntu_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
+  askubuntu_data.load_vector_embeddings("../data/glove/glove_pruned_300D.txt")
   askubuntu_data.load_training_examples("../data/askubuntu/train_random.txt")
   askubuntu_data.load_dev_data("../data/askubuntu/dev.txt")
   askubuntu_data.load_test_data("../data/askubuntu/test.txt")
@@ -370,13 +379,13 @@ if __name__ == "__main__":
   android_data = AndroidDataset()
   android_data.load_corpus("../data/android/corpus.tsv")
   # android_data.init_tfidf_bow_vectors()
-  android_data.load_vector_embeddings("../data/glove/glove_pruned_200D.txt")
+  android_data.load_vector_embeddings("../data/glove/glove_pruned_300D.txt")
   android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
   # unsupervised_methods(android_data)
 
-  part1(askubuntu_data, model_type=ModelType.LSTM, android_data=android_data)
+  # part1(askubuntu_data, model_type=ModelType.CNN, android_data=android_data)
   # direct_transfer(askubuntu_data, android_data)
 
   # NOTE batch_size must be an even number here!
-  # part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
+  part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)

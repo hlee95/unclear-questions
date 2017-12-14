@@ -10,7 +10,7 @@ import random
 CORPUS_LIMIT = 2000000
 EMBEDDINGS_LIMIT = 10000000
 
-EMBEDDING_LENGTH = 200
+EMBEDDING_LENGTH = 300
 
 class Dataset(object):
   def __init__(self):
