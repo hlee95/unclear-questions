@@ -3,9 +3,9 @@ A script to prune the off the shelf glove vectors to only include those
 that are in the Askubuntu or Android datasets.
 """
 
-out_filename = "data/glove/glove_pruned_200D.txt"
+out_filename = "data/glove/glove_pruned_300D.txt"
 missing_words_filename = "data/glove/glove_pruned_missing_words.txt"
-glove_input_filename = "data/glove/glove.6B.200D.txt"
+glove_input_filename = "data/glove/glove.840B.300D.txt"
 askubuntu_filename = "data/askubuntu/text_tokenized.txt"
 android_filename = "data/android/corpus.tsv"
 
@@ -36,13 +36,17 @@ if __name__ == "__main__":
   added_words_count = 0
   added_words = {}
   for line in glove_input_file:
-    word = line.split()[0].lower()
-    if word in joint_corpus or word == "unk":
+    word = line.split()[0]
+    # word = original_word.lower()
+    if word.lower() in joint_corpus or word == "unk":
+      if word.lower() in added_words:
+        continue
       if word == "unk":
-        print '"unk" added'
-      output_file.write(line)
+        print '"unk" added', word
+      lowercase_line = " ".join([word.lower()] + line.split()[1:]) + "\n"
+      output_file.write(lowercase_line)
       added_words_count += 1
-      added_words[word] = True
+      added_words[word.lower()] = True
   glove_input_file.close()
   output_file.close()
   print "Added %d words to output file at %s " % (added_words_count, out_filename)
