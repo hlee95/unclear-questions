@@ -62,7 +62,8 @@ class Dataset(object):
     for line in corpus_file:
       question_id, title, body = line.split("\t")
       if len(title.split()) == 0 or len(body.split()) == 0:
-        print "Skipping question_id %d because title or body is empty" % int(question_id)
+        print "Skipping question_id %d because title or body is empty" \
+              % int(question_id)
         self.skipped_questions[int(question_id)] = True
         continue
       title_words = [word.lower() for word in title.split()]
@@ -71,7 +72,8 @@ class Dataset(object):
         title_words = title_words[:self.MAX_SEQUENCE_LENGTH]
       if len(body_words) > self.MAX_SEQUENCE_LENGTH:
         body_words = body_words[:self.MAX_SEQUENCE_LENGTH]
-      self.corpus[int(question_id)] = (" ".join(title_words), " ".join(body_words))
+      self.corpus[int(question_id)] = (
+        " ".join(title_words), " ".join(body_words))
       count += 1
       if count > CORPUS_LIMIT:
         break
@@ -106,18 +108,22 @@ class Dataset(object):
   def get_body(self, id):
     return self.corpus[id][1]
 
-  def get_next_training_feature(self, batch_size=1, use_title=True, use_body=True, tfidf_weighting=False):
+  def get_next_training_feature(self, batch_size=1, use_title=True,
+                                use_body=True, tfidf_weighting=False):
     title = None
     body= None
     if use_title:
-      title_vectors, title_masks = self.get_next_training_feature_helper(batch_size, True, tfidf_weighting)
+      title_vectors, title_masks = self.get_next_training_feature_helper(
+          batch_size, True, tfidf_weighting)
       title = (title_vectors, title_masks)
     if use_body:
       if use_title:
         # If we already got title features, backtrack so we get the same features.
         if len(self.training_examples) > 0:
-          self.next_training_idx = (self.next_training_idx - batch_size) % len(self.training_examples)
-      body_vectors, body_masks = self.get_next_training_feature_helper(batch_size, False, tfidf_weighting)
+          self.next_training_idx = \
+            (self.next_training_idx - batch_size) % len(self.training_examples)
+      body_vectors, body_masks = self.get_next_training_feature_helper(
+        batch_size, False, tfidf_weighting)
       body = (body_vectors, body_masks)
     return title, body
 
@@ -130,14 +136,16 @@ class Dataset(object):
     """
     raise NotImplementedError
 
-  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True, use_body=True, tfidf_weighting=False):
+  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True,
+                            use_body=True, tfidf_weighting=False):
     title = None
     body = None
     similar = None
 
     if use_title:
       title_vectors, title_masks, title_similar = \
-        self.get_next_eval_feature_helper(use_dev, batch_size, True, tfidf_weighting)
+        self.get_next_eval_feature_helper(use_dev, batch_size, True,
+                                          tfidf_weighting)
       title = (title_vectors, title_masks)
       similar = title_similar
 
@@ -145,11 +153,14 @@ class Dataset(object):
       if use_title:
         # If we already got title features, backtrack so we get the same features.
         if use_dev:
-          self.next_dev_idx = (self.next_dev_idx - batch_size) % len(self.dev_data)
+          self.next_dev_idx = (self.next_dev_idx - batch_size) \
+            % len(self.dev_data)
         else:
-          self.next_test_idx = (self.next_test_idx - batch_size) % len(self.test_data)
+          self.next_test_idx = (self.next_test_idx - batch_size) \
+            % len(self.test_data)
       body_vectors, body_masks, body_similar = \
-        self.get_next_eval_feature_helper(use_dev, batch_size, False, tfidf_weighting)
+        self.get_next_eval_feature_helper(use_dev, batch_size, False,
+                                          tfidf_weighting)
       body = (body_vectors, body_masks)
       similar = body_similar
 
@@ -173,8 +184,18 @@ class Dataset(object):
     padded_vectors = np.ndarray((batch_size, max_n, self.EMBEDDING_LENGTH))
     padded_masks = np.ndarray((batch_size, max_n))
     for i in xrange(len(vectors)):
-      padded_vectors[i] = np.pad(vectors[i], ((0, max_n - len(vectors[i])), (0, 0)), "constant", constant_values=0)
-      padded_masks[i] = np.pad(masks[i], (0, max_n - len(masks[i])), "constant", constant_values=0)
+      padded_vectors[i] = np.pad(
+        vectors[i],
+        ((0, max_n - len(vectors[i])), (0, 0)),
+        "constant",
+        constant_values=0
+      )
+      padded_masks[i] = np.pad(
+        masks[i],
+        (0, max_n - len(masks[i])),
+        "constant",
+        constant_values=0
+      )
     # Sanity check...
     # for i in xrange(len(padded_vectors)):
     #   for j in xrange(max_n):
@@ -209,7 +230,8 @@ class Dataset(object):
       tfidf_dict = {}
       for i in range(len(unique)):
         word = unique[i]
-        tfidf = np.log(float(num_docs) / document_frequency[word]) * counts[i] / len(text_only)
+        tfidf = np.log(float(num_docs) / document_frequency[word]) * \
+                counts[i] / len(text_only)
         tfidf_dict[word] = tfidf
       self.tfidf_dicts[key] = tfidf_dict
 

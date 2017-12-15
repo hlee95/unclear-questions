@@ -70,7 +70,8 @@ class AskUbuntuDataset(Dataset):
         map(int, candidate_ids.split())
       )
       # Find out which candidates are the similar ones.
-      similar_indexes = [i for i in xrange(len(candidates)) if candidates[i] in similar]
+      similar_indexes = [
+        i for i in xrange(len(candidates)) if candidates[i] in similar]
       assert len(similar_indexes) == len(similar) and len(similar_indexes) > 0
       # Sanity check.
       # for i in xrange(len(candidates)):
@@ -83,7 +84,8 @@ class AskUbuntuDataset(Dataset):
     return data
 
   # Overriding.
-  def get_next_training_feature_helper(self, batch_size=1, use_title=True, tfidf_weighting=False):
+  def get_next_training_feature_helper(self, batch_size=1, use_title=True,
+                                       tfidf_weighting=False):
     """
     Return vectors, which is numpy matrix with dimensions
       batch_size*22 by max_num_words by 200,
@@ -100,9 +102,11 @@ class AskUbuntuDataset(Dataset):
       for sample_id in [q_i, p_i] + [Q_i[j] for j in negatives]:
         embedding = None
         if use_title:
-          embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
+          embedding = self.create_embedding_for_sentence(
+            self.get_title(sample_id))
         else:
-          embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+          embedding = self.create_embedding_for_sentence(
+            self.get_body(sample_id))
         if tfidf_weighting:
           bow_title, bow_body = self.get_bow_feature(sample_id)
           if use_title:
@@ -120,7 +124,8 @@ class AskUbuntuDataset(Dataset):
     return self.pad_helper(vectors, masks, batch_size * 22, max_n)
 
   # Overriding.
-  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True, tfidf_weighting=False):
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True,
+                                   tfidf_weighting=False):
     """
     Returns 3 things:
      - vectors, which is a batch_size*21 by max_n by 200 numpy matrix
@@ -133,14 +138,18 @@ class AskUbuntuDataset(Dataset):
     similars = []
     masks = []
     for _ in xrange(batch_size):
-      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
+      query, similar, candidates = \
+        self.dev_data[self.next_dev_idx] if use_dev \
+        else self.test_data[self.next_test_idx]
       similars.append(similar)
       for sample_id in [query] + candidates:
         embedding = None
         if use_title:
-          embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
+          embedding = self.create_embedding_for_sentence(
+            self.get_title(sample_id))
         else:
-          embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+          embedding = self.create_embedding_for_sentence(
+            self.get_body(sample_id))
         if tfidf_weighting:
           bow_title, bow_body = self.get_bow_feature(sample_id)
           if use_title:
@@ -155,5 +164,6 @@ class AskUbuntuDataset(Dataset):
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
     assert max_n <= self.MAX_SEQUENCE_LENGTH
-    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size * 21, max_n)
+    padded_vectors, padded_masks = self.pad_helper(
+      vectors, masks, batch_size * 21, max_n)
     return padded_vectors, padded_masks, np.array(similars)

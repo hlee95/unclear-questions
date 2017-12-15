@@ -60,7 +60,9 @@ class AndroidDataset(Dataset):
     for query_id, positive_ids in positives.items():
       candidates = positive_ids + negatives[query_id]
       similar_indexes = range(len(positive_ids))
-      assert len(similar_indexes) == len(positive_ids) and len(similar_indexes) > 0
+      # Sanity check...
+      # assert len(similar_indexes) == len(positive_ids)
+      # assert len(similar_indexes) > 0
       data.append((query_id, similar_indexes, candidates))
     # Merge with global positive and negative dictionaries.
     self.positives.update(positives)
@@ -68,7 +70,8 @@ class AndroidDataset(Dataset):
     return data
 
   # Overriding.
-  def get_next_training_feature_helper(self, batch_size=1, use_title=True, tfidf_weighting=False):
+  def get_next_training_feature_helper(self, batch_size=1, use_title=True,
+                                       tfidf_weighting=False):
     """
     Return vectors, which is numpy matrix with dimensions
       batch_size by max_num_words by 200,
@@ -98,13 +101,16 @@ class AndroidDataset(Dataset):
       max_n = max(max_n, len(embedding))
       masks.append(np.ones(len(embedding)))
       vectors.append(embedding)
+    # Sanity check.
+    # assert len(vectors) == len(masks)
+    # assert max_n <= self.MAX_SEQUENCE_LENGTH
+
     # Pad all vectors and masks to the size of the max length one.
-    assert len(vectors) == len(masks)
-    assert max_n <= self.MAX_SEQUENCE_LENGTH
     return self.pad_helper(vectors, masks, batch_size, max_n)
 
   # Overriding.
-  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True, tfidf_weighting=False):
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True,
+                                   tfidf_weighting=False):
     """
     Returns 3 things:
      - vectors, which is a batch_size*21 by max_n by 200 numpy matrix
@@ -118,20 +124,30 @@ class AndroidDataset(Dataset):
     masks = []
     num_candidates = 20 # Some positive, some negative.
     for _ in xrange(batch_size):
-      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
+      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev \
+                                   else self.test_data[self.next_test_idx]
       similars.append(similar)
-      random_negative_idxs = random.sample(xrange(len(similar), len(candidates)), num_candidates - len(similar))
+      random_negative_idxs = random.sample(
+        xrange(len(similar), len(candidates)),
+        num_candidates - len(similar)
+      )
       # Sanity check.
       # for i in xrange(len(similar)):
       #   assert i in similar
       #   assert i not in random_negative_idxs
-      shorter_candidates_list = [candidates[i] for i in xrange(len(candidates)) if i in similar or i in random_negative_idxs]
+      shorter_candidates_list = [
+        candidates[i] for i in xrange(len(candidates)) \
+          if i in similar or i in random_negative_idxs
+      ]
+
       for sample_id in [query] + shorter_candidates_list:
         embedding = None
         if use_title:
-          embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
+          embedding = self.create_embedding_for_sentence(
+            self.get_title(sample_id))
         else:
-          embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+          embedding = self.create_embedding_for_sentence(
+            self.get_body(sample_id))
         if tfidf_weighting:
           bow_title, bow_body = self.get_bow_feature(sample_id)
           if use_title:
@@ -145,9 +161,9 @@ class AndroidDataset(Dataset):
         self.next_dev_idx = (self.next_dev_idx + 1) % len(self.dev_data)
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
-    padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size*21, max_n)
+    padded_vectors, padded_masks = self.pad_helper(
+      vectors, masks, batch_size*21, max_n)
     return padded_vectors, padded_masks, np.array(similars)
-
 
   def get_next_eval_bow_feature(self, use_dev, batch_size=1):
     """
@@ -160,8 +176,11 @@ class AndroidDataset(Dataset):
     labels = []
     num_negatives = 20
     for _ in xrange(batch_size):
-      query, similar, candidates = self.dev_data[self.next_dev_idx] if use_dev else self.test_data[self.next_test_idx]
-      random_negative_idxs = random.sample(xrange(len(similar), len(candidates)), num_negatives)
+      query, similar, candidates = \
+        self.dev_data[self.next_dev_idx] if use_dev \
+        else self.test_data[self.next_test_idx]
+      random_negative_idxs = random.sample(
+        xrange(len(similar), len(candidates)), num_negatives)
       for i in xrange(len(similar)):
         assert i in similar
         assert i not in random_negative_idxs
@@ -169,7 +188,10 @@ class AndroidDataset(Dataset):
       for i in similar:
         labels_batch[i] = 1
       labels.append(labels_batch)
-      shorter_candidates_list = [candidates[i] for i in xrange(len(candidates)) if i in similar or i in random_negative_idxs]
+      shorter_candidates_list = [
+        candidates[i] for i in xrange(len(candidates)) \
+        if i in similar or i in random_negative_idxs
+      ]
       for sample_id in [query] + shorter_candidates_list:
         # Get BOW vector.
         bow_vectors.append(self.tfidf_dicts[sample_id])

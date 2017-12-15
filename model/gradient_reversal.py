@@ -5,7 +5,8 @@ The gradient reversal layer is simply the identity in the forward
 direction, and inverses the gradient and multiplies by a scaling factor
 Lambda in the backwards direction.
 
-This was useful: https://discuss.pytorch.org/t/solved-reverse-gradients-in-backward-pass/3589/4
+This was useful:
+https://discuss.pytorch.org/t/solved-reverse-gradients-in-backward-pass/3589/4
 """
 import torch
 from torch import nn

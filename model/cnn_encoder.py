@@ -6,13 +6,15 @@ from torch import nn
 from torch.autograd import Variable
 
 class CNNEncoder(nn.Module):
-  def __init__(self, input_dim, output_dim, filter_width, activation=nn.Tanh(), use_cuda=False, return_average=True):
+  def __init__(self, input_dim, output_dim, filter_width, activation=nn.Tanh(),
+               use_cuda=False, return_average=True):
     super(CNNEncoder, self).__init__()
     self.input_dim = input_dim
     self.output_dim = output_dim
     self.filter_width = filter_width
     self.return_average = return_average
-    self.conv = nn.Conv1d(input_dim, output_dim, filter_width, padding=filter_width-1)
+    self.conv = nn.Conv1d(input_dim, output_dim, filter_width,
+                          padding=filter_width-1)
     self.activation = activation
     self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
@@ -36,9 +38,11 @@ class CNNEncoder(nn.Module):
       max_num_words = output.size()[2]
       batch_size = output.size()[0]
 
-      last_h = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+      last_h = Variable(torch.zeros(batch_size, self.output_dim)
+        .type(self.float_dtype))
       for t in range(max_num_words):
-        last_h = (1-mask[:,t])[:,None]*last_h.clone() + (mask[:,t])[:,None]*masked_output[:,:,t].clone()
+        last_h = (1-mask[:,t])[:,None]*last_h.clone() + \
+                 (mask[:,t])[:,None]*masked_output[:,:,t].clone()
 
       return last_h
 

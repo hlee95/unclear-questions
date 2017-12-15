@@ -113,7 +113,8 @@ def run_model_helper(model, features, masks, model_type):
     Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
   )
 
-def train_model(model_type, data, model, num_epochs, batch_size, use_title=True, use_body=True, tfidf_weighting=False):
+def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
+                use_body=True, tfidf_weighting=False):
   """
   Train the given model with the given data.
   """
@@ -126,7 +127,8 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
     num_batches = len(data.training_examples)/batch_size
     print "num_batches", num_batches
     for j in xrange(num_batches):
-      title, body = data.get_next_training_feature(batch_size, use_title, use_body, tfidf_weighting)
+      title, body = data.get_next_training_feature(batch_size, use_title,
+        use_body, tfidf_weighting)
       optimizer.zero_grad()
       h = run_model(model, title, body, use_title, use_body, model_type)
       avg_loss = 0
@@ -176,36 +178,34 @@ def part1(askubuntu_data, model_type, android_data=None):
   If android_data is not None, also evaluates the model on the android_data
   for the direct transfer section of part 2.
   """
+  model = None
   if model_type == ModelType.LSTM:
-    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
+    model = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
                        use_cuda=USE_CUDA, return_average=True)
-    train_model(model_type, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
-                       use_title=True, use_body=True)
-    # Add in the evaluation on android because why not.
-    if android_data is not None:
-      print "----------Evaluating on android dataset..."
-      eval_part2(lstm, android_data, True, model_type, direct_transfer=True)
-      eval_part2(lstm, android_data, False, model_type, direct_transfer=True)
-
-  if model_type == ModelType.CNN:
-    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
+  elif model_type == ModelType.CNN:
+    model = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
                      use_cuda=USE_CUDA, return_average=True)
-    train_model(model_type, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE,
+  else:
+    print "Error: unknown model type", model_type
+    return
+  train_model(model_type, askubuntu_data, model, NUM_EPOCHS, BATCH_SIZE,
                      use_title=True, use_body=True)
-    if android_data is not None:
-      print "----------Evaluating on android dataset..."
-      eval_part2(cnn, android_data, True, model_type, direct_transfer=True)
-      eval_part2(cnn, android_data, False, model_type, direct_transfer=True)
+  # Add in the evaluation on android for direct transfer baseline for part 2.
+  if android_data is not None:
+    print "----------Evaluating Part1 model on android dataset..."
+    eval_part2(model, android_data, True, model_type, using_part1_model=True)
+    eval_part2(model, android_data, False, model_type, using_part1_model=True)
 
-def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=ModelType.CNN):
+def part2(askubuntu_data, android_data, num_epochs, batch_size,
+          model_type=ModelType.CNN):
   assert batch_size % 2 == 0
   torch.manual_seed(1)
-  # TODO: Paper mentions increasing lambda over time, we should try that.
   model = AdversarialDomainAdaptation(EMBEDDING_LENGTH, CNN_HIDDEN_DIM,
                                       FILTER_WIDTH, LSTM_HIDDEN_DIM,
                                       LAMBDA, USE_CUDA)
   optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WD)
-  num_training_examples = min(len(askubuntu_data.training_examples), len(android_data.corpus.keys()))
+  num_training_examples = min(len(askubuntu_data.training_examples),
+                              len(android_data.corpus.keys()))
   for i in xrange(num_epochs):
     num_batches = num_training_examples / batch_size
     model.change_lambda(LAMBDA*(i+1))
@@ -215,17 +215,32 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
       optimizer.zero_grad()
 
       # Get batch_size/2 of askubuntu_data, and batch_size/2 of android_data.
-      askubuntu_title, askubuntu_body = askubuntu_data.get_next_training_feature(batch_size/2, True, True)
-      android_title, android_body = android_data.get_next_training_feature(batch_size/2 * NUM_EXAMPLES, True, True)
-      # Need to re-pad so that they are all the same length.
+      askubuntu_title, askubuntu_body = \
+        askubuntu_data.get_next_training_feature(batch_size/2, True, True)
+      android_title, android_body = \
+        android_data.get_next_training_feature(batch_size/2 * NUM_EXAMPLES,
+                                               True, True)
+      # Might need to re-pad so askubuntu and android data have same length.
       if askubuntu_title[0].shape[1] > android_title[0].shape[1]:
-        android_title = askubuntu_data.pad_helper(android_title[0], android_title[1], batch_size/2 * NUM_EXAMPLES, askubuntu_title[0].shape[1])
+        android_title = askubuntu_data.pad_helper(
+          android_title[0], android_title[1], batch_size/2 * NUM_EXAMPLES,
+          askubuntu_title[0].shape[1]
+        )
       elif android_title[0].shape[1] > askubuntu_title[0].shape[1]:
-        askubuntu_title = askubuntu_data.pad_helper(askubuntu_title[0], askubuntu_title[1], batch_size/2 * NUM_EXAMPLES, android_title[0].shape[1])
+        askubuntu_title = askubuntu_data.pad_helper(askubuntu_title[0],
+          askubuntu_title[1], batch_size/2 * NUM_EXAMPLES,
+          android_title[0].shape[1]
+        )
       if askubuntu_body[0].shape[1] > android_body[0].shape[1]:
-        android_body = askubuntu_data.pad_helper(android_body[0], android_body[1], batch_size/2 * NUM_EXAMPLES, askubuntu_body[0].shape[1])
+        android_body = askubuntu_data.pad_helper(android_body[0],
+          android_body[1], batch_size/2 * NUM_EXAMPLES,
+          askubuntu_body[0].shape[1]
+        )
       elif android_body[0].shape[1] > askubuntu_body[0].shape[1]:
-        askubuntu_body = askubuntu_data.pad_helper(askubuntu_body[0], askubuntu_body[1], batch_size/2 * NUM_EXAMPLES, android_body[0].shape[1])
+        askubuntu_body = askubuntu_data.pad_helper(askubuntu_body[0],
+          askubuntu_body[1], batch_size/2 * NUM_EXAMPLES,
+          android_body[0].shape[1]
+        )
 
       # Sanity check.
       # assert askubuntu_title[0].shape == android_title[0].shape
@@ -233,41 +248,48 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
       # assert askubuntu_body[0].shape == android_body[0].shape
       # assert askubuntu_body[1].shape == askubuntu_body[1].shape
 
-      # Randomly mix them, remember the order of mixing.
+      # Randomly select an order to mix the askubuntu and android data.
       askubuntu_indexes = random.sample(xrange(batch_size), batch_size/2)
       real_domain_labels = np.zeros(batch_size * NUM_EXAMPLES)
       for k in askubuntu_indexes:
-        real_domain_labels[k * NUM_EXAMPLES:(k + 1) * NUM_EXAMPLES] = np.ones(NUM_EXAMPLES)
-      title_vectors = np.ndarray((batch_size*NUM_EXAMPLES, askubuntu_title[0].shape[1], EMBEDDING_LENGTH))
-      title_masks = np.ndarray((batch_size*NUM_EXAMPLES, askubuntu_title[0].shape[1]))
-      body_vectors = np.ndarray((batch_size*NUM_EXAMPLES, askubuntu_body[0].shape[1], EMBEDDING_LENGTH))
-      body_masks = np.ndarray((batch_size*NUM_EXAMPLES, askubuntu_body[0].shape[1]))
+        real_domain_labels[k*NUM_EXAMPLES:(k+1)*NUM_EXAMPLES] = np.ones(NUM_EXAMPLES)
+      # Create empty containers to store the mixed data.
+      title_vectors = np.ndarray((
+        batch_size*NUM_EXAMPLES, askubuntu_title[0].shape[1], EMBEDDING_LENGTH))
+      title_masks = np.ndarray((
+        batch_size*NUM_EXAMPLES, askubuntu_title[0].shape[1]))
+      body_vectors = np.ndarray((
+        batch_size*NUM_EXAMPLES, askubuntu_body[0].shape[1], EMBEDDING_LENGTH))
+      body_masks = np.ndarray((
+        batch_size*NUM_EXAMPLES, askubuntu_body[0].shape[1]))
 
+      # Mix askubuntu and android data into the containers.
       askubuntu_idx = 0
       android_idx = 0
       for k in xrange(batch_size):
-        # print start, end, askubuntu_idx, askubuntu_idx + NUM_EXAMPLES, android_idx, android_idx + NUM_EXAMPLES
-        start = k * NUM_EXAMPLES
-        end = (k + 1) * NUM_EXAMPLES
+        k_start = k * NUM_EXAMPLES
+        k_end = (k + 1) * NUM_EXAMPLES
 
         if real_domain_labels[k*NUM_EXAMPLES] == 1:
-          title_vectors[start:end] = askubuntu_title[0][askubuntu_idx:askubuntu_idx + NUM_EXAMPLES]
-          title_masks[start:end] = askubuntu_title[1][askubuntu_idx:askubuntu_idx + NUM_EXAMPLES]
-          body_vectors[start:end] = askubuntu_body[0][askubuntu_idx:askubuntu_idx + NUM_EXAMPLES]
-          body_masks[start:end] = askubuntu_body[1][askubuntu_idx:askubuntu_idx + NUM_EXAMPLES]
+          start = askubuntu_idx
+          end = askubuntu_idx + NUM_EXAMPLES
+          title_vectors[k_start:k_end] = askubuntu_title[0][start:end]
+          title_masks[k_start:k_end] = askubuntu_title[1][start:end]
+          body_vectors[k_start:k_end] = askubuntu_body[0][start:end]
+          body_masks[k_start:k_end] = askubuntu_body[1][start:end]
           askubuntu_idx += NUM_EXAMPLES
         else:
-          title_vectors[start:end] = android_title[0][android_idx:android_idx + NUM_EXAMPLES]
-          title_masks[start:end] = android_title[1][android_idx:android_idx + NUM_EXAMPLES]
-          body_vectors[start:end] = android_body[0][android_idx:android_idx + NUM_EXAMPLES]
-          body_masks[start:end] = android_body[1][android_idx:android_idx + NUM_EXAMPLES]
+          start = android_idx
+          end = android_idx + NUM_EXAMPLES
+          title_vectors[k_start:k_end] = android_title[0][start:end]
+          title_masks[k_start:k_end] = android_title[1][start:end]
+          body_vectors[k_start:k_end] = android_body[0][start:end]
+          body_masks[k_start:k_end] = android_body[1][start:end]
           android_idx += NUM_EXAMPLES
 
-      embeddings, predicted_domain_labels = run_part2_model(model, title_vectors,
-        body_vectors, title_masks, body_masks, model_type)
-
-      # embeddings, predicted_domain_labels = run_part2_model(model, askubuntu_title[0],
-      #   askubuntu_body[0], askubuntu_title[1], askubuntu_body[1], model_type)
+      # Run data through the model.
+      embeddings, predicted_domain_labels = run_part2_model(model,
+        title_vectors, body_vectors, title_masks, body_masks, model_type)
 
       # Get multimargin loss.
       avg_mm_loss = 0
@@ -279,48 +301,50 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
           multimargin_loss = get_multimargin_loss(h_q, h_p, h_Q)
           avg_mm_loss += multimargin_loss
           multimargin_loss.backward(retain_graph=True)
-      avg_mm_loss /= (batch_size/2)
-      # Use BCE Loss for the domain classification.
+      avg_mm_loss /= (batch_size/2) # Only half of the data counts.
+
+      # Use BCELoss for the domain classification.
       domain_loss_func = torch.nn.BCEWithLogitsLoss()
-      real_domain_labels = Variable(torch.Tensor(real_domain_labels).type(DOUBLE_DTYPE))
-      domain_loss = domain_loss_func(predicted_domain_labels.squeeze(1), real_domain_labels)
+      real_domain_labels = Variable(torch.Tensor(real_domain_labels)
+        .type(DOUBLE_DTYPE))
+      domain_loss = domain_loss_func(predicted_domain_labels.squeeze(1),
+                                     real_domain_labels)
       domain_loss.backward()
+      optimizer.step()
+
       if j % 250 == 0:
         print 'batch %d' % j
         print 'multimargin loss %f, domain loss %f' % (avg_mm_loss.cpu().data.numpy()[0], domain_loss.cpu().data.numpy()[0])
-      optimizer.step()
+
     # At the end of each epoch, evaluate.
     eval_part2(model, android_data, True, model_type)
     eval_part2(model, android_data, False, model_type)
 
-def part3(askubuntu_data, model_type, android_data=None):
+def part3(askubuntu_data, model_type, android_data):
   """
   Runs the model from part 3.
 
   If android_data is not None, also evaluates the model on the android_data
   for the direct transfer section of part 2.
   """
+  model = None
   if model_type == ModelType.LSTM:
-    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
+    model = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
                        use_cuda=USE_CUDA, return_average=True)
-    train_model(model_type, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
-                       use_title=True, use_body=True, tfidf_weighting=True)
-    # Add in the evaluation on android because why not.
-    if android_data is not None:
-      print "----------Evaluating on android dataset..."
-      eval_part2(lstm, android_data, True, model_type, direct_transfer=True, tfidf_weighting=True)
-      eval_part2(lstm, android_data, False, model_type, direct_transfer=True, tfidf_weighting=True)
-
-  if model_type == ModelType.CNN:
-    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
+  elif model_type == ModelType.CNN:
+    model = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
                      use_cuda=USE_CUDA, return_average=True)
-    train_model(model_type, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE,
-                     use_title=True, use_body=True, tfidf_weighting=True)
-    if android_data is not None:
-      print "----------Evaluating on android dataset..."
-      eval_part2(cnn, android_data, True, model_type, direct_transfer=True, tfidf_weighting=True)
-      eval_part2(cnn, android_data, False, model_type, direct_transfer=True, tfidf_weighting=True)
-      
+  else:
+    print "Error: unknown model type", model_type
+    return
+  train_model(model_type, askubuntu_data, model, NUM_EPOCHS, BATCH_SIZE,
+              use_title=True, use_body=True, tfidf_weighting=True)
+  print "----------Evaluating Part 2.3 on android dataset..."
+  eval_part2(model, android_data, True, model_type, using_part1_model=True,
+             tfidf_weighting=True)
+  eval_part2(model, android_data, False, model_type, using_part1_model=True,
+             tfidf_weighting=True)
+
 def run_part2_model(model, title_vectors, body_vectors, title_masks,
                      body_masks, model_type, use_domain_classifier=True):
   """
@@ -336,18 +360,22 @@ def run_part2_model(model, title_vectors, body_vectors, title_masks,
   title_masks_var = Variable(torch.Tensor(title_masks).type(FLOAT_DTYPE))
   body_vectors_var = Variable(torch.Tensor(body_vectors).type(FLOAT_DTYPE))
   body_masks_var = Variable(torch.Tensor(body_masks).type(FLOAT_DTYPE))
-  embeddings, predicted_domain_labels = model.forward(title_vectors_var, body_vectors_var,
-    title_masks_var, body_masks_var, model_type==ModelType.CNN, use_domain_classifier)
+  embeddings, predicted_domain_labels = model.forward(title_vectors_var,
+    body_vectors_var, title_masks_var, body_masks_var,
+    model_type==ModelType.CNN, use_domain_classifier)
   return embeddings, predicted_domain_labels
 
-def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, batch_size=1, tfidf_weighting=False):
+def eval_part2(model, android_data, use_dev, model_type,
+               using_part1_model=False, batch_size=1, tfidf_weighting=False):
   print "Begin eval_part2..."
   auc_eval = AUCMeter()
-  num_batches = len(android_data.dev_data) / batch_size if use_dev else len(android_data.test_data) / batch_size
+  num_batches = len(android_data.dev_data) / batch_size if use_dev \
+                else len(android_data.test_data) / batch_size
   for i in xrange(num_batches):
-    title, body, similar = android_data.get_next_eval_feature(use_dev, tfidf_weighting=tfidf_weighting)
+    title, body, similar = android_data.get_next_eval_feature(use_dev,
+      tfidf_weighting=tfidf_weighting)
     h = None
-    if direct_transfer:
+    if using_part1_model:
       h = run_model(model, title, body, True, True, model_type)
     else:
       title_vectors, title_masks = title
@@ -375,7 +403,8 @@ def unsupervised_methods(android_data):
   def unsupervised_methods_helper(android_data, use_dev):
     auc_eval = AUCMeter()
     batch_size = 1
-    num_batches = len(android_data.dev_data) / batch_size if use_dev else len(android_data.test_data) / batch_size
+    num_batches = len(android_data.dev_data) / batch_size if use_dev \
+                  else len(android_data.test_data) / batch_size
     for i in xrange(num_batches):
       bows, labels = android_data.get_next_eval_bow_feature(use_dev, batch_size)
       for j in xrange(batch_size):
@@ -392,11 +421,16 @@ def unsupervised_methods(android_data):
   unsupervised_methods_helper(android_data, True)
   unsupervised_methods_helper(android_data, False)
 
+
+
+
 if __name__ == "__main__":
   if USE_CUDA:
     print "using CUDA"
 
-  # Load all the data!
+  """
+  Load all the data!
+  """
   askubuntu_data = AskUbuntuDataset()
   askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
   askubuntu_data.init_tfidf_bow_vectors()
@@ -412,8 +446,24 @@ if __name__ == "__main__":
 
   android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
-  # unsupervised_methods(android_data)
-  part3(askubuntu_data, model_type=ModelType.CNN, android_data=android_data)
 
+  """
+  Run all the models!
+  """
+  # Run part 1 and get direct transfer.
+  part1(askubuntu_data, ModelType.CNN, android_data)
+
+  # Get unsupervised benchmark for part 2.
+  unsupervised_methods(android_data)
+
+  # Run part 2, the adversarial domain adaptation network.
   # NOTE batch_size must be an even number here!
-  # part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
+  part2(askubuntu_data, android_data, num_epochs=20, batch_size=16,
+        model_type=ModelType.LSTM)
+
+  # Run our new idea for domain adaptation, which involves tfidf weighting.
+  part3(askubuntu_data, ModelType.CNN, android_data)
+
+  print "\n\nDone."
+
+

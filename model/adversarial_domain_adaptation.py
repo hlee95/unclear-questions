@@ -19,23 +19,25 @@ from domain_classifier import DomainClassifier
 from gradient_reversal import GradientReversalLayer
 
 class AdversarialDomainAdaptation(nn.Module):
-  def __init__(self, input_dim, cnn_hidden_dim, filter_width, lstm_hidden_dim, Lambda, use_cuda):
+  def __init__(self, input_dim, cnn_hidden_dim, filter_width, lstm_hidden_dim,
+               Lambda, use_cuda):
     super(AdversarialDomainAdaptation, self).__init__()
-    self.question_encoder_cnn = CNNEncoder(input_dim, cnn_hidden_dim, filter_width, use_cuda=use_cuda)
-    self.question_encoder_lstm = LSTMEncoder(input_dim, lstm_hidden_dim, use_cuda=use_cuda)
+    self.question_encoder_cnn = CNNEncoder(input_dim, cnn_hidden_dim,
+                                           filter_width, use_cuda=use_cuda)
+    self.question_encoder_lstm = LSTMEncoder(input_dim, lstm_hidden_dim,
+                                             use_cuda=use_cuda)
     self.gradient_reversal = GradientReversalLayer(Lambda, use_cuda)
-    self.domain_classifier_cnn = DomainClassifier(input_dim=cnn_hidden_dim, use_cuda=use_cuda)
-    self.domain_classifier_lstm = DomainClassifier(input_dim=lstm_hidden_dim, use_cuda=use_cuda)
-
-    # self.domain_classifier_cnn.register_backward_hook(lambda x, y, z: self.gradient_reversal.gradient_reversal_func.backward(z))
-    # self.domain_classifier_cnn.register_backward_hook(self.hook)
-    # self.Lambda = Lambda
+    self.domain_classifier_cnn = DomainClassifier(input_dim=cnn_hidden_dim,
+                                                  use_cuda=use_cuda)
+    self.domain_classifier_lstm = DomainClassifier(input_dim=lstm_hidden_dim,
+                                                   use_cuda=use_cuda)
 
     if use_cuda:
       self.cuda()
 
 
-  def forward(self, title, body, title_mask, body_mask, use_cnn=True, use_domain_classifier=True, return_average=True):
+  def forward(self, title, body, title_mask, body_mask, use_cnn=True,
+              use_domain_classifier=True, return_average=True):
     """
     Runs one forward pass on the input.
 

@@ -21,7 +21,8 @@ class RNNLayer(nn.Module):
     return hidden
 
 class LSTMEncoder(nn.Module):
-  def __init__(self, input_dim, output_dim, activation=nn.Tanh(), use_cuda=False, return_average=True):
+  def __init__(self, input_dim, output_dim, activation=nn.Tanh(),
+               use_cuda=False, return_average=True):
     super(LSTMEncoder, self).__init__()
     # Create the different gates that we need.
     self.input_dim = input_dim
@@ -35,7 +36,7 @@ class LSTMEncoder(nn.Module):
     self.float_dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     if use_cuda:
-        self.cuda()
+      self.cuda()
 
   def forward(self, input, prev_h, prev_c):
     """
@@ -61,14 +62,21 @@ class LSTMEncoder(nn.Module):
     batch_size = all_input.size()[0]
     max_num_words = all_input.size()[1]
 
-    h = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
-    c = Variable(torch.zeros(batch_size, max_num_words, self.output_dim).type(self.float_dtype))
-    last_h = Variable(torch.zeros(batch_size, self.output_dim).type(self.float_dtype))
+    h = Variable(torch.zeros(batch_size, max_num_words, self.output_dim)
+          .type(self.float_dtype))
+    c = Variable(torch.zeros(batch_size, max_num_words, self.output_dim)
+          .type(self.float_dtype))
+    last_h = Variable(torch.zeros(batch_size, self.output_dim)
+          .type(self.float_dtype))
     for t in xrange(max_num_words):
-      h[:,t,:], c[:,t,:] = self.forward(all_input[:, t, :], h[:,t-1,:].clone(), c[:,t-1,:].clone())
-      # if mask is 1, last_h takes the most recent hidden layer, else last_h stays the same
-      last_h = (1-mask[:,t]).unsqueeze(1)*last_h.clone() + mask[:,t].unsqueeze(1)*h[:,t,:].clone()
-    masked_h = h*mask.unsqueeze(2)
+      h[:,t,:], c[:,t,:] = self.forward(
+        all_input[:,t,:], h[:,t-1,:].clone(), c[:,t-1,:].clone()
+      )
+      # If mask is 1, last_h takes the most recent hidden layer.
+      # Otherwise, last_h stays the same since new info is just padding.
+      last_h = (1 - mask[:,t]).unsqueeze(1) * last_h.clone() + \
+               mask[:,t].unsqueeze(1) * h[:,t,:].clone()
+    masked_h = h * mask.unsqueeze(2)
 
     if self.return_average:
       return torch.sum(masked_h, 1)/torch.sum(mask, 1).unsqueeze(1)
