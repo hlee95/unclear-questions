@@ -83,7 +83,7 @@ class AskUbuntuDataset(Dataset):
     return data
 
   # Overriding.
-  def get_next_training_feature_helper(self, batch_size=1, use_title=True):
+  def get_next_training_feature_helper(self, batch_size=1, use_title=True, tfidf_weighting=False):
     """
     Return vectors, which is numpy matrix with dimensions
       batch_size*22 by max_num_words by 200,
@@ -103,6 +103,12 @@ class AskUbuntuDataset(Dataset):
           embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
         else:
           embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+        if tfidf_weighting:
+          bow_title, bow_body = self.get_bow_feature(sample_id)
+          if use_title:
+            embedding = embedding * bow_title[:, None]
+          else:
+            embedding = embedding * bow_body[:, None]
         max_n = max(max_n, len(embedding))
         masks.append(np.ones(len(embedding)))
         vectors.append(embedding)
@@ -114,7 +120,7 @@ class AskUbuntuDataset(Dataset):
     return self.pad_helper(vectors, masks, batch_size * 22, max_n)
 
   # Overriding.
-  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True):
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True, tfidf_weighting=False):
     """
     Returns 3 things:
      - vectors, which is a batch_size*21 by max_n by 200 numpy matrix
@@ -135,6 +141,12 @@ class AskUbuntuDataset(Dataset):
           embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
         else:
           embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+        if tfidf_weighting:
+          bow_title, bow_body = self.get_bow_feature(sample_id)
+          if use_title:
+            embedding = embedding * bow_title[:, None]
+          else:
+            embedding = embedding * bow_body[:, None]
         max_n = max(max_n, len(embedding))
         masks.append(np.ones(len(embedding)))
         vectors.append(embedding)

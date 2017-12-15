@@ -12,8 +12,6 @@ class AndroidDataset(Dataset):
     self.positives = {}
     self.negatives = {}
 
-    self.tfidf_dicts = {}
-
   def load_training_examples(self, filepath):
     """
     Populate self.training_examples.
@@ -70,7 +68,7 @@ class AndroidDataset(Dataset):
     return data
 
   # Overriding.
-  def get_next_training_feature_helper(self, batch_size=1, use_title=True):
+  def get_next_training_feature_helper(self, batch_size=1, use_title=True, tfidf_weighting=False):
     """
     Return vectors, which is numpy matrix with dimensions
       batch_size by max_num_words by 200,
@@ -91,6 +89,12 @@ class AndroidDataset(Dataset):
           embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
       else:
         embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+      if tfidf_weighting:
+        bow_title, bow_body = self.get_bow_feature(sample_id)
+        if use_title:
+          embedding = embedding * bow_title[:, None]
+        else:
+          embedding = embedding * bow_body[:, None]
       max_n = max(max_n, len(embedding))
       masks.append(np.ones(len(embedding)))
       vectors.append(embedding)
@@ -100,7 +104,7 @@ class AndroidDataset(Dataset):
     return self.pad_helper(vectors, masks, batch_size, max_n)
 
   # Overriding.
-  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True):
+  def get_next_eval_feature_helper(self, use_dev, batch_size=1, use_title=True, tfidf_weighting=False):
     """
     Returns 3 things:
      - vectors, which is a batch_size*21 by max_n by 200 numpy matrix
@@ -128,6 +132,12 @@ class AndroidDataset(Dataset):
           embedding = self.create_embedding_for_sentence(self.get_title(sample_id))
         else:
           embedding = self.create_embedding_for_sentence(self.get_body(sample_id))
+        if tfidf_weighting:
+          bow_title, bow_body = self.get_bow_feature(sample_id)
+          if use_title:
+            embedding = embedding * bow_title[:, None]
+          else:
+            embedding = embedding * bow_body[:, None]
         max_n = max(max_n, len(embedding))
         masks.append(np.ones(len(embedding)))
         vectors.append(embedding)
@@ -138,33 +148,6 @@ class AndroidDataset(Dataset):
     padded_vectors, padded_masks = self.pad_helper(vectors, masks, batch_size*21, max_n)
     return padded_vectors, padded_masks, np.array(similars)
 
-  def init_tfidf_bow_vectors(self):
-    # find vocab
-    # find df
-    # find tf
-    print "Computing Tf-Idf vectors..."
-    vocab_dict = {}
-    vocab_list = []
-    document_frequency = {}
-    for key in self.corpus:
-      text_only = self.corpus[key][0].split() + self.corpus[key][1].split()
-      for word in np.unique(text_only):
-        if not word in vocab_dict:
-          vocab_dict[word] = len(vocab_list)-1
-          vocab_list.append(word)
-        document_frequency[word] = document_frequency.get(word, 0) + 1
-
-    num_docs = len(self.corpus)
-    for key in self.corpus:
-      text_only = self.corpus[key][0].split() + self.corpus[key][1].split()
-      unique, counts = np.unique(text_only, return_counts=True)
-      # normalized_counts = counts / len(text_only)
-      tfidf_dict = {}
-      for i in range(len(unique)):
-        word = unique[i]
-        tfidf = np.log(float(num_docs) / document_frequency[word]) * counts[i] / len(text_only)
-        tfidf_dict[word] = tfidf
-      self.tfidf_dicts[key] = tfidf_dict
 
   def get_next_eval_bow_feature(self, use_dev, batch_size=1):
     """
@@ -195,4 +178,5 @@ class AndroidDataset(Dataset):
       else:
         self.next_test_idx = (self.next_test_idx + 1) % len(self.test_data)
     return (bow_vectors, labels)
+
 

@@ -34,6 +34,8 @@ class Dataset(object):
     self.next_training_idx = 0
     self.next_dev_idx = 0
     self.next_test_idx = 0
+    self.tfidf_dicts = {}
+
 
   def load_training_examples(self, filepath):
     """
@@ -104,18 +106,18 @@ class Dataset(object):
   def get_body(self, id):
     return self.corpus[id][1]
 
-  def get_next_training_feature(self, batch_size=1, use_title=True, use_body=True):
+  def get_next_training_feature(self, batch_size=1, use_title=True, use_body=True, tfidf_weighting=False):
     title = None
     body= None
     if use_title:
-      title_vectors, title_masks = self.get_next_training_feature_helper(batch_size, True)
+      title_vectors, title_masks = self.get_next_training_feature_helper(batch_size, True, tfidf_weighting)
       title = (title_vectors, title_masks)
     if use_body:
       if use_title:
         # If we already got title features, backtrack so we get the same features.
         if len(self.training_examples) > 0:
           self.next_training_idx = (self.next_training_idx - batch_size) % len(self.training_examples)
-      body_vectors, body_masks = self.get_next_training_feature_helper(batch_size, False)
+      body_vectors, body_masks = self.get_next_training_feature_helper(batch_size, False, tfidf_weighting)
       body = (body_vectors, body_masks)
     return title, body
 
@@ -128,14 +130,14 @@ class Dataset(object):
     """
     raise NotImplementedError
 
-  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True, use_body=True):
+  def get_next_eval_feature(self, use_dev, batch_size=1, use_title=True, use_body=True, tfidf_weighting=False):
     title = None
     body = None
     similar = None
 
     if use_title:
       title_vectors, title_masks, title_similar = \
-        self.get_next_eval_feature_helper(use_dev, batch_size, True)
+        self.get_next_eval_feature_helper(use_dev, batch_size, True, tfidf_weighting)
       title = (title_vectors, title_masks)
       similar = title_similar
 
@@ -147,7 +149,7 @@ class Dataset(object):
         else:
           self.next_test_idx = (self.next_test_idx - batch_size) % len(self.test_data)
       body_vectors, body_masks, body_similar = \
-        self.get_next_eval_feature_helper(use_dev, batch_size, False)
+        self.get_next_eval_feature_helper(use_dev, batch_size, False, tfidf_weighting)
       body = (body_vectors, body_masks)
       similar = body_similar
 
@@ -183,4 +185,45 @@ class Dataset(object):
     #       assert padded_masks[i][j] == 1
     return padded_vectors, padded_masks
 
+  def init_tfidf_bow_vectors(self):
+    # find vocab
+    # find df
+    # find tf
+    print "Computing Tf-Idf vectors..."
+    vocab_dict = {}
+    vocab_list = []
+    document_frequency = {}
+    for key in self.corpus:
+      text_only = self.corpus[key][0].split() + self.corpus[key][1].split()
+      for word in np.unique(text_only):
+        if not word in vocab_dict:
+          vocab_dict[word] = len(vocab_list)-1
+          vocab_list.append(word)
+        document_frequency[word] = document_frequency.get(word, 0) + 1
+
+    num_docs = len(self.corpus)
+    for key in self.corpus:
+      text_only = self.corpus[key][0].split() + self.corpus[key][1].split()
+      unique, counts = np.unique(text_only, return_counts=True)
+      # normalized_counts = counts / len(text_only)
+      tfidf_dict = {}
+      for i in range(len(unique)):
+        word = unique[i]
+        tfidf = np.log(float(num_docs) / document_frequency[word]) * counts[i] / len(text_only)
+        tfidf_dict[word] = tfidf
+      self.tfidf_dicts[key] = tfidf_dict
+
+  def get_bow_feature(self, sample_id):
+    title = self.get_title(sample_id).split()
+    body = self.get_body(sample_id).split()
+    bow_title = np.zeros(len(title))
+    bow_body = np.zeros(len(body))
+    d = self.tfidf_dicts[sample_id]
+    for i in range(len(title)):
+      word = title[i]
+      bow_title[i] = d[word]
+    for i in range(len(body)):
+      word = body[i]
+      bow_body[i] = d[word]
+    return (bow_title, bow_body)
 

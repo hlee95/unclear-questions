@@ -113,7 +113,7 @@ def run_model_helper(model, features, masks, model_type):
     Variable(torch.Tensor(masks).type(FLOAT_DTYPE))
   )
 
-def train_model(model_type, data, model, num_epochs, batch_size, use_title=True, use_body=True):
+def train_model(model_type, data, model, num_epochs, batch_size, use_title=True, use_body=True, tfidf_weighting=False):
   """
   Train the given model with the given data.
   """
@@ -126,7 +126,7 @@ def train_model(model_type, data, model, num_epochs, batch_size, use_title=True,
     num_batches = len(data.training_examples)/batch_size
     print "num_batches", num_batches
     for j in xrange(num_batches):
-      title, body = data.get_next_training_feature(batch_size, use_title, use_body)
+      title, body = data.get_next_training_feature(batch_size, use_title, use_body, tfidf_weighting)
       optimizer.zero_grad()
       h = run_model(model, title, body, use_title, use_body, model_type)
       avg_loss = 0
@@ -293,6 +293,34 @@ def part2(askubuntu_data, android_data, num_epochs, batch_size, model_type=Model
     eval_part2(model, android_data, True, model_type)
     eval_part2(model, android_data, False, model_type)
 
+def part3(askubuntu_data, model_type, android_data=None):
+  """
+  Runs the model from part 3.
+
+  If android_data is not None, also evaluates the model on the android_data
+  for the direct transfer section of part 2.
+  """
+  if model_type == ModelType.LSTM:
+    lstm = LSTMEncoder(EMBEDDING_LENGTH, LSTM_HIDDEN_DIM,
+                       use_cuda=USE_CUDA, return_average=True)
+    train_model(model_type, askubuntu_data, lstm, NUM_EPOCHS, BATCH_SIZE,
+                       use_title=True, use_body=True, tfidf_weighting=True)
+    # Add in the evaluation on android because why not.
+    if android_data is not None:
+      print "----------Evaluating on android dataset..."
+      eval_part2(lstm, android_data, True, model_type, direct_transfer=True, tfidf_weighting=True)
+      eval_part2(lstm, android_data, False, model_type, direct_transfer=True, tfidf_weighting=True)
+
+  if model_type == ModelType.CNN:
+    cnn = CNNEncoder(EMBEDDING_LENGTH, CNN_HIDDEN_DIM, FILTER_WIDTH,
+                     use_cuda=USE_CUDA, return_average=True)
+    train_model(model_type, askubuntu_data, cnn, NUM_EPOCHS, BATCH_SIZE,
+                     use_title=True, use_body=True, tfidf_weighting=True)
+    if android_data is not None:
+      print "----------Evaluating on android dataset..."
+      eval_part2(cnn, android_data, True, model_type, direct_transfer=True, tfidf_weighting=True)
+      eval_part2(cnn, android_data, False, model_type, direct_transfer=True, tfidf_weighting=True)
+      
 def run_part2_model(model, title_vectors, body_vectors, title_masks,
                      body_masks, model_type, use_domain_classifier=True):
   """
@@ -312,12 +340,12 @@ def run_part2_model(model, title_vectors, body_vectors, title_masks,
     title_masks_var, body_masks_var, model_type==ModelType.CNN, use_domain_classifier)
   return embeddings, predicted_domain_labels
 
-def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, batch_size=1):
+def eval_part2(model, android_data, use_dev, model_type, direct_transfer=False, batch_size=1, tfidf_weighting=False):
   print "Begin eval_part2..."
   auc_eval = AUCMeter()
   num_batches = len(android_data.dev_data) / batch_size if use_dev else len(android_data.test_data) / batch_size
   for i in xrange(num_batches):
-    title, body, similar = android_data.get_next_eval_feature(use_dev)
+    title, body, similar = android_data.get_next_eval_feature(use_dev, tfidf_weighting=tfidf_weighting)
     h = None
     if direct_transfer:
       h = run_model(model, title, body, True, True, model_type)
@@ -371,6 +399,7 @@ if __name__ == "__main__":
   # Load all the data!
   askubuntu_data = AskUbuntuDataset()
   askubuntu_data.load_corpus("../data/askubuntu/text_tokenized.txt")
+  askubuntu_data.init_tfidf_bow_vectors()
   askubuntu_data.load_vector_embeddings("../data/glove/glove_pruned_300D.txt")
   askubuntu_data.load_training_examples("../data/askubuntu/train_random.txt")
   askubuntu_data.load_dev_data("../data/askubuntu/dev.txt")
@@ -378,14 +407,13 @@ if __name__ == "__main__":
 
   android_data = AndroidDataset()
   android_data.load_corpus("../data/android/corpus.tsv")
-  # android_data.init_tfidf_bow_vectors()
+  android_data.init_tfidf_bow_vectors()
   android_data.load_vector_embeddings("../data/glove/glove_pruned_300D.txt")
+
   android_data.load_dev_data("../data/android/dev.pos.txt", "../data/android/dev.neg.txt")
   android_data.load_test_data("../data/android/test.pos.txt", "../data/android/test.neg.txt")
   # unsupervised_methods(android_data)
-
-  # part1(askubuntu_data, model_type=ModelType.CNN, android_data=android_data)
-  # direct_transfer(askubuntu_data, android_data)
+  part3(askubuntu_data, model_type=ModelType.CNN, android_data=android_data)
 
   # NOTE batch_size must be an even number here!
-  part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
+  # part2(askubuntu_data, android_data, num_epochs=20, batch_size=16, model_type=ModelType.CNN)
